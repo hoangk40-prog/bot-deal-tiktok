@@ -11,3 +11,4 @@ anh_quang_cao/
 desktop.ini
 # ban cu nam ngoai thu muc .github (ban dung: .github/workflows/deals.yml)
 /deals.yml
+*.bak
