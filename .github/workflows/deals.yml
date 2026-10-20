@@ -32,6 +32,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          MAKE_WEBHOOK: ${{ secrets.MAKE_WEBHOOK }}
           FORCE: ${{ github.event_name == 'workflow_dispatch' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
         run: python auto_deals.py

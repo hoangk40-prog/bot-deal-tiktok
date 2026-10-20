@@ -7,6 +7,7 @@ __pycache__/
 nhat_ky.txt
 ket_qua*.txt
 anh_ghep_thu.jpg
+anh_quang_cao/
 desktop.ini
 # ban cu nam ngoai thu muc .github (ban dung: .github/workflows/deals.yml)
 /deals.yml

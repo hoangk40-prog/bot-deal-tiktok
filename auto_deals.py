@@ -13,10 +13,10 @@ Cai dat: config.json (khong chua token). Token chay tren may: config.local.json 
 """
 import datetime
 import json
+import math
 import os
 import re
 import sys
-import math
 import time
 import unicodedata
 import urllib.error
@@ -54,6 +54,8 @@ DEFAULTS = {
     "min_commission": 3,           # % hoa hong toi thieu
     "product_cooldown_days": 7,    # san pham da gui: nghi bao nhieu ngay
     "max_per_category": 2,         # moi nhom hang toi da bao nhieu san pham/dot (cho da dang)
+    "fb_max_per_day": 5,           # Trang Facebook qua Make.com: toi da bao nhieu bai/ngay (Facebook ghet dang day, Make free ~1000 luot/thang)
+    "fb_gap_hours": 3,             # 2 bai Facebook cach nhau it nhat bao nhieu gio
     "zalo_combo": False,           # true: moi dot gui 1 ANH GHEP (danh so, co gia) + 1 TIN CHU GOP -> chi 2 lan copy sang Zalo
 }
 
@@ -853,6 +855,23 @@ def fb_post(page_id, page_token, it):
         raise RuntimeError(f"Facebook loi {e.code}{hint}: {body}")
 
 
+def make_post(hook, it):
+    """Gui 1 san pham sang Make.com (kich ban: Webhook -> Facebook Pages 'Create a Post with Photos')."""
+    body = json.dumps({"image": it.get("image") or "", "message": caption(it), "link": it.get("aff") or ""}).encode()
+    req = urllib.request.Request(hook, data=body, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        r.read()
+
+
+def fb_quota_ok(meta, cfg, n):
+    """Con duoc dang Facebook (qua Make) luc nay khong: chua qua so bai/ngay va da cach bai truoc du lau."""
+    fb = meta.get("fb_make") or {}
+    today = n.date().isoformat()
+    if fb.get("date") == today and int(fb.get("count", 0)) >= int(cfg["fb_max_per_day"]):
+        return False
+    return not recent(fb.get("last", ""), float(cfg["fb_gap_hours"]), n)
+
+
 def safe_alert(bot, chat, text, dry):
     if dry or not (bot and chat):
         print("[canh bao]", text)
@@ -878,6 +897,7 @@ def main():
     chat = os.environ.get("TELEGRAM_CHAT_ID", "") or str(local.get("telegram_chat_id", "")).strip()
     channel = os.environ.get("TELEGRAM_CHANNEL_ID", "") or str(local.get("telegram_channel_id", "")).strip()   # kenh: bot tu dang tung san pham
     fb_page, fb_token = str(local.get("fb_page_id", "")).strip(), str(local.get("fb_page_token", "")).strip()  # Trang Facebook (nhap_facebook.bat)
+    make_hook = os.environ.get("MAKE_WEBHOOK", "") or str(local.get("make_webhook", "")).strip()   # Trang Facebook qua Make.com
     if not token or (not dry and not (bot and chat)):
         sys.exit("Thieu token (ACCESSTRADE_TOKEN / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID). Tren may: bam dup nhap_telegram.bat.")
     if not cfg["merchants"] and not cfg["tiktok"]:
@@ -1006,7 +1026,7 @@ def main():
         return
 
     # --- gui: moi san pham 1 tin co anh, sau do 1 tin chu (voucher, link)
-    errors, sent_any = [], False
+    errors, sent_any, sent_items = [], False, []
     combo_ok = False
     if cfg["zalo_combo"] and len(posts) >= 2:
         try:
@@ -1039,12 +1059,24 @@ def main():
             else:
                 meta["fb_fail"] = 0
         sent_any = True
+        sent_items.append(it)
         if it.get("src"):
             state["links"][it["src"]] = {"t": ts}
         else:
             state["products"]["tt|" + it["id"]] = {"t": ts}
         if not combo_ok:
             time.sleep(1)
+    # --- Trang Facebook qua Make.com: 1 bai/lan chay, gioi han so bai/ngay (khong lam hong Telegram neu loi)
+    fb_item = next((x for x in sent_items if x.get("image") and x.get("aff")), None)
+    if make_hook and fb_item and fb_quota_ok(meta, cfg, n):
+        try:
+            make_post(make_hook, fb_item)
+            fb = meta.get("fb_make") or {}
+            cnt = int(fb.get("count", 0)) + 1 if fb.get("date") == n.date().isoformat() else 1
+            meta["fb_make"] = {"date": n.date().isoformat(), "count": cnt, "last": ts}
+            print(f"Da gui sang Make -> Trang Facebook (bai {cnt}/{cfg['fb_max_per_day']} hom nay)")
+        except Exception as e:
+            print("LOI gui sang Make (Facebook):", str(e)[:200])
     if msg:
         send_err = None
         try:
