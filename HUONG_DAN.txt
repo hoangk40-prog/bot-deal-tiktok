@@ -1,0 +1,98 @@
+SỬA THÊM 20/10 (sau khi đối chiếu tài liệu API TikTok của Accesstrade)
+- Tài liệu ghi "title_keywords" là BẮT BUỘC. Nếu gọi "gợi ý" không từ khoá bị từ chối / ra 0 sản phẩm,
+  bot tự tìm theo 12 từ khoá hàng bán chạy (áo, quần, váy, giày, túi, son, kem chống nắng, serum,
+  sạc, tai nghe, nồi, đồ gia dụng). Muốn đổi thì điền tiktok_keywords trong config.json.
+- Sản phẩm mà API không trả "đã bán" (shop không chia sẻ số liệu) không còn bị loại oan nữa.
+- Log in rõ từng lần gọi API: ra bao nhiêu sản phẩm, API từ chối vì sao, kèm 1 sản phẩm mẫu.
+- 1 lần gọi lỗi không làm hỏng cả đợt; chỉ báo lỗi khi mọi lần gọi đều lỗi.
+
+KIỂM TRA NHANH TRÊN MÁY: bấm đúp chay_thu.bat (chạy thử, không gửi gì), rồi gửi em file ket_qua.txt.
+
+BOT DEAL: BẢN TIKTOK (20/10/2026)
+=================================
+VÌ SAO ĐỔI
+- Chiến dịch TikTok Shop trên Accesstrade ĐÃ được duyệt (hoa hồng tới 20%), Shopee còn "chờ duyệt"
+  (Accesstrade tạm ngừng duyệt người mới từ 26/5) nên voucher Shopee tạm TẮT ("shopee": false).
+- Bỏ hẳn phần "lịch sử giá": Shopee cấm công cụ xem lịch sử giá, vi phạm phạt 10 triệu/lần.
+
+BOT LÀM GÌ
+- Lấy sản phẩm hot TikTok Shop (API chính thức của Accesstrade), lọc: còn hàng, giá 30k–1 triệu,
+  đã bán >= 100, hoa hồng >= 3%, mỗi shop 1 món, mỗi loại hàng tối đa 2 món, 7 ngày không gửi lại.
+- Tạo link rút gọn có hoa hồng (shorten.asia/...).
+- Gửi Telegram MỖI SẢN PHẨM 1 TIN CÓ ẢNH + chữ (tên, giá, đã bán, shop, link) vào khung giờ 11h và 19h.
+  Anh mở Telegram, chuyển tiếp / lưu ảnh + chép chữ dán vào nhóm Zalo.
+- my_links.txt: dán link sản phẩm TikTok anh tự chọn (link copy từ app TikTok), bot tự đổi sang link
+  hoa hồng + lấy ảnh, giá rồi gửi ở đợt sau. Link không tham gia tiếp thị liên kết thì bot báo lại.
+
+CHỈNH CÀI ĐẶT (config.json)
+  max_products     số sản phẩm mỗi đợt (mặc định 4)
+  min_price / max_price   khoảng giá bán (đồng)
+  min_sold         đã bán tối thiểu
+  min_commission   % hoa hồng tối thiểu
+  tiktok_keywords  tìm thêm theo từ khoá, ví dụ ["áo chống nắng", "nồi chiên"]
+  send_hours       giờ gửi, ví dụ [11, 19]
+  shopee           đổi thành true khi chiến dịch Shopee được duyệt
+
+ĐƯA LÊN GITHUB: chép đè auto_deals.py, config.json, test_auto_deals.py, .github/workflows/deals.yml vào repo.
+Token Accesstrade & Telegram giữ nguyên trong Secrets, không cần đổi.
+
+LƯU Ý ZALO / ACCESSTRADE
+- Tên nhóm Zalo KHÔNG dùng chữ "Shopee" (quy định Shopee). Không tự mua qua link của mình.
+- Mỗi lần đăng 2–4 món, ngày 2 lần là vừa; đăng dồn dập dễ bị báo spam.
+
+=============================================================================
+(Phần dưới là hướng dẫn bản cũ)
+
+BOT VOUCHER: BẢN MỚI, ĐÃ SỬA
+=============================
+
+CÁCH ĐƯA LÊN
+------------
+1. Chép đè các file này vào thư mục tool và vào repo GitHub của anh:
+     auto_deals.py, deals_gui.pyw, config.json, .gitignore, test_auto_deals.py  -> gốc repo
+     deals.yml                                                                   -> .github/workflows/deals.yml
+   KHÔNG ghi đè my_links.txt và sent.json (đó là dữ liệu của anh; bản mới đọc được sent.json cũ).
+2. LÀM NGAY: token Accesstrade cũ đã nằm trong config.json (và đã hiện trong cuộc trò chuyện),
+   hãy tạo token mới ở Accesstrade, rồi:
+     - GitHub: Settings > Secrets and variables > Actions > sửa secret ACCESSTRADE_TOKEN bằng token mới.
+     - Máy anh: mở deals_gui.pyw, dán token mới, bấm "Lưu cài đặt". Token được lưu ở config.local.json
+       (đã nằm trong .gitignore nên không bị đưa lên GitHub).
+   Nếu token cũ từng bị đẩy lên GitHub thì xóa file không đủ, lịch sử git vẫn còn: bắt buộc phải đổi token.
+3. Kiểm tra: tab Actions > "Quet voucher moi 2 tieng" > Run workflow, tick "Chay thu" (xem tin nhắn trong log,
+   chưa gửi gì). Thấy ổn thì chạy lại không tick: sẽ gửi thật và gửi kèm thống kê vì sao voucher bị loại.
+
+ĐÃ SỬA GÌ
+---------
+- Hết gửi trùng: voucher được nhớ đến hết hạn + 1 ngày (không có hạn thì 30 ngày); link TikTok trong
+  my_links.txt được nhớ chừng nào còn trong file (trước đây cứ ~3 ngày bị gửi lại).
+- Đọc giá trị voucher tốt hơn: hiểu "100K", "30k", "1,5tr", "50.000đ", cả mô tả không dấu. Voucher bị loại
+  được ghi lý do trong log, kèm vài ví dụ để dễ chỉnh.
+- Cấu hình thống nhất: config.json dùng chung cho bot và giao diện, không chứa token.
+  Công tắc shopee/tiktok và max_items giờ có tác dụng với bot. Giao diện giữ nguyên các khóa của bot khi lưu.
+- Giao diện dùng chung cách đọc/lọc/xếp hạng với bot (mỗi shop 1 voucher tốt nhất, bỏ voucher giá trị thấp).
+- Cảnh báo lỗi: lỗi 3 lần liên tiếp thì bot nhắn Telegram; hoạt động lại thì nhắn "đã hoạt động lại".
+  Một sàn lỗi cũng được đếm (trước đây im lặng).
+- Gửi Telegram: thử lại khi lỗi tạm thời, in rõ lý do lỗi, không gửi trùng khi gửi được một phần.
+- Chạy thử (DRY_RUN) không còn làm mất voucher (trước đây chạy thử vẫn đánh dấu "đã gửi").
+- Tên shop không có dấu [..] vẫn tách được; lịch GitHub có thời gian tối đa 10 phút, lưu trạng thái an toàn hơn.
+
+CHỈNH CÀI ĐẶT (config.json)
+---------------------------
+  min_value            giá trị voucher tối thiểu mới gửi (đồng), mặc định 20000
+  max_items            số voucher tối đa mỗi tin nhắn
+  shop_cooldown_hours  mỗi shop nghỉ bao lâu giữa 2 lần gửi
+  active_from/active_to  khung giờ gửi (giờ Việt Nam)
+  shopee / tiktok      bật tắt từng sàn
+  (min_discount, max_price chỉ dùng cho nút "Lấy sản phẩm" của giao diện)
+
+KIỂM THỬ
+--------
+  python test_auto_deals.py      (không cần mạng, không cần token; phải ra "TAT CA DAT")
+
+GIỚI HẠN CẦN BIẾT
+-----------------
+- Em chưa gọi thử Accesstrade và Telegram thật (máy em không có mạng). Việc đọc mô tả voucher được kiểm bằng
+  các mẫu em nghĩ ra; nếu Accesstrade viết khác thì xem log "vi du bi loai" rồi gửi em chỉnh tiếp.
+- Cron của GitHub hay chạy trễ vài phút đến hơn chục phút, đôi khi bỏ lượt.
+- Repo public mà 60 ngày không có hoạt động nào thì GitHub tự tắt lịch chạy. Bot commit sent.json mỗi khi
+  có voucher mới nên hiếm khi dính; nếu thấy ngừng chạy thì vào tab Actions bật lại.

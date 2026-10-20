@@ -1,0 +1,50 @@
+name: Deal TikTok moi gio
+
+on:
+  schedule:
+    - cron: "5 0-15 * * *"         # gio UTC; = 7h05 ... 22h05 gio Viet Nam. Chi gui tin o cac gio trong send_hours (config.json)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Chay thu: chi in tin nhan ra log, KHONG gui Telegram, KHONG luu trang thai"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: deals
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Quet va gui Telegram
+        env:
+          ACCESSTRADE_TOKEN: ${{ secrets.ACCESSTRADE_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: python auto_deals.py
+      - name: Luu trang thai da gui
+        if: always()                # ke ca khi buoc tren bao loi, van luu bo dem loi de canh bao dung luc
+        run: |
+          git config user.name "deal-bot"
+          git config user.email "deal-bot@users.noreply.github.com"
+          git add sent.json || true
+          if ! git diff --cached --quiet; then
+            git commit -m "cap nhat trang thai"
+            for i in 1 2 3; do
+              git pull --rebase --autostash && git push && break
+              sleep 5
+            done
+          fi

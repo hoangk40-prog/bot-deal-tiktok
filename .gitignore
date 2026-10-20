@@ -1,0 +1,12 @@
+# Token va file rieng cua may nay: KHONG dua len GitHub
+config.local.json
+loi.txt
+*.tmp
+__pycache__/
+# nhat ky, ket qua chay thu, anh thu: chi de tren may
+nhat_ky.txt
+ket_qua*.txt
+anh_ghep_thu.jpg
+desktop.ini
+# ban cu nam ngoai thu muc .github (ban dung: .github/workflows/deals.yml)
+/deals.yml
