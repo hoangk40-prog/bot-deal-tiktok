@@ -54,8 +54,8 @@ DEFAULTS = {
     "min_commission": 3,           # % hoa hong toi thieu
     "product_cooldown_days": 7,    # san pham da gui: nghi bao nhieu ngay
     "max_per_category": 2,         # moi nhom hang toi da bao nhieu san pham/dot (cho da dang)
-    "fb_max_per_day": 5,           # Trang Facebook qua Make.com: toi da bao nhieu bai/ngay (Facebook ghet dang day, Make free ~1000 luot/thang)
-    "fb_gap_hours": 3,             # 2 bai Facebook cach nhau it nhat bao nhieu gio
+    "fb_max_per_day": 8,           # Trang Facebook qua Make.com: toi da bao nhieu bai/ngay (Facebook ghet dang day, Make free ~1000 luot/thang)
+    "fb_gap_hours": 1.75,          # 2 bai Facebook cach nhau it nhat bao nhieu gio (~2 gio; de 1.75 vi GitHub chay lech gio vai phut)
     "zalo_combo": False,           # true: moi dot gui 1 ANH GHEP (danh so, co gia) + 1 TIN CHU GOP -> chi 2 lan copy sang Zalo
 }
 
