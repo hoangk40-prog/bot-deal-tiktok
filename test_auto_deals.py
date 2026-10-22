@@ -313,6 +313,10 @@ check("doi nganh = doi tu khoa tim", kw_seen == A.WIN_KEYWORDS["my_pham"][1], st
 check("tin co tieu de + 10 san pham + link", len(sent) == 1 and sent[0].startswith("🏆 Sản phẩm win hôm nay – Mỹ phẩm")
       and sent[0].count("shorten.asia/w") == 10, str(sent))
 check("nho da gui hom nay", stw["meta"].get("win_date") == "2026-10-12")
+check("moi san pham co link tim kiem TikTok", sent[0].count("tiktok.com/search?q=") == 10)
+check("link tim kiem bo phan quang cao trong ngoac",
+      A.tiktok_search("[DEAL 20/10] Chảo chống dính CV 26cm") == "https://www.tiktok.com/search?q="
+      + A.urllib.parse.quote("Chảo chống dính CV 26cm"))
 A.time.sleep = real_sleep
 
 print()

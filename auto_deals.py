@@ -949,6 +949,13 @@ def pick_win(items, cfg):
     return out
 
 
+def tiktok_search(title):
+    """Link tim kiem TikTok theo ten san pham (bo phan quang cao trong ngoac, lay ~8 tu dau) de xem so da ban."""
+    t = re.sub(r"[\[【{(（].*?[\]】})）]", " ", title)
+    t = " ".join(re.sub(r"[^\w\s]", " ", t).split()[:8]) or title[:60]
+    return "https://www.tiktok.com/search?q=" + urllib.parse.quote(t)
+
+
 def win_text(items, ten_nganh, n):
     lines = [f"🏆 Sản phẩm win hôm nay – {ten_nganh} ({n:%d/%m})",
              f"Giá {vnd(items[0]['_min'])}–{vnd(items[0]['_max'])}, xếp theo tiền hoa hồng", ""]
@@ -957,7 +964,8 @@ def win_text(items, ten_nganh, n):
         info = [f"💰 {vnd(it['price'])}", f"🎁 HH {it['pct']:.1f}% ≈ {vnd(it['commission'])}".replace(".", ",", 1)]
         if it.get("sold"):
             info.append(f"🛒 {it['sold']:,} đã bán".replace(",", "."))
-        lines += [f"{i}. {t}", "   " + " · ".join(info), f"   👉 {it['aff']}", ""]
+        lines += [f"{i}. {t}", "   " + " · ".join(info), f"   👉 {it['aff']}",
+                  f"   🔍 Xem trên TikTok: {tiktok_search(it['title'])}", ""]
     return "\n".join(lines).strip()
 
 
