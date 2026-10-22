@@ -1,0 +1,82 @@
+{
+ "2026-10-21": {
+  "ngay": "2026-10-21",
+  "luc": "22:35",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "con_thieu_de_rut_tien": 200000.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "anh_cho": 48,
+   "anh_da_dang": 1,
+   "anh_dang_hom_nay": 1,
+   "video_cho": 51,
+   "video_da_dang": 1,
+   "video_dang_hom_nay": 1
+  },
+  "bot": {
+   "mon_gui_hom_nay": 12,
+   "luot_chay_hom_nay": 6,
+   "bai_fb_hom_nay": 3,
+   "loi_lien_tiep": 0,
+   "ghi_chu": "Lấy từ sent.json trên Drive, có thể cũ hơn bản thật trên GitHub"
+  }
+ },
+ "2026-10-22": {
+  "ngay": "2026-10-22",
+  "luc": "12:10",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "con_thieu_de_rut_tien": 200000.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "anh_cho": 48,
+   "anh_da_dang": 1,
+   "anh_dang_hom_nay": 0,
+   "video_cho": 51,
+   "video_da_dang": 1,
+   "video_dang_hom_nay": 0
+  },
+  "bot": {
+   "mon_gui_hom_nay": 0,
+   "luot_chay_hom_nay": 0,
+   "bai_fb_hom_nay": 0,
+   "loi_lien_tiep": 0,
+   "ghi_chu": "Lấy từ sent.json trên Drive, có thể cũ hơn bản thật trên GitHub"
+  }
+ }
+}

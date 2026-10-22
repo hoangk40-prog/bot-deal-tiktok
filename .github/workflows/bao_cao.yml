@@ -1,0 +1,51 @@
+name: Bao cao kiem tien moi ngay
+
+on:
+  schedule:
+    - cron: "30 15 * * *"          # 22h30 gio VN -> nhom Telegram "BAO CAO KIEM TIEN" (GitHub co the cham vai phut)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Chay thu: chi in bao cao ra log, KHONG gui, KHONG luu lich su"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bao-cao
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests google-auth
+      - name: Gom so lieu va gui bao cao
+        env:
+          ACCESSTRADE_TOKEN: ${{ secrets.ACCESSTRADE_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          TELEGRAM_REPORT_CHAT_ID: ${{ secrets.TELEGRAM_REPORT_CHAT_ID }}
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: python bao_cao_ngay.py tu_dong
+      - name: Luu lich su bao cao
+        run: |
+          git config user.name "deal-bot"
+          git config user.email "deal-bot@users.noreply.github.com"
+          git add bao_cao/lich_su.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "cap nhat lich su bao cao"
+            for i in 1 2 3; do
+              git pull --rebase --autostash && git push && break
+              sleep 5
+            done
+          fi
