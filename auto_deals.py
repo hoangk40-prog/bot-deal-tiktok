@@ -840,15 +840,44 @@ def send_combo(bot, chat, items):
 FB_API = "https://graph.facebook.com/v21.0"
 
 
+def fb_image_bytes(src):
+    """Tai anh san pham ve (Facebook tu tai qua link hay bao 'Missing or invalid image file'). Co Pillow thi doi sang JPEG."""
+    req = urllib.request.Request(src, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        data = r.read()
+    try:
+        from io import BytesIO
+        from PIL import Image
+        out = BytesIO()
+        Image.open(BytesIO(data)).convert("RGB").save(out, "JPEG", quality=90)
+        return out.getvalue()
+    except Exception:                                  # khong co Pillow (GitHub) -> gui nguyen anh
+        return data
+
+
 def fb_post(page_id, page_token, it):
     """Dang 1 san pham len Trang: anh + chu thich (link bam duoc). Khong co anh thi dang bai chu kem link."""
+    photo = None
     if it.get("image"):
-        url, fields = f"{FB_API}/{page_id}/photos", {"url": it["image"], "caption": caption(it)}
+        url, fields = f"{FB_API}/{page_id}/photos", {"caption": caption(it)}
+        try:
+            photo = fb_image_bytes(it["image"])
+        except Exception as e:
+            print("  Tai anh cho Facebook loi, de Facebook tu tai qua link:", e)
+            fields["url"] = it["image"]
     else:
         url, fields = f"{FB_API}/{page_id}/feed", {"message": caption(it), "link": it["aff"]}
     fields["access_token"] = page_token
+    if photo:                                          # gui file anh kem chu thich (multipart)
+        b = "----dealbot" + str(int(time.time() * 1000))
+        body = b"".join(f'--{b}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode() for k, v in fields.items())
+        body += (f'--{b}\r\nContent-Disposition: form-data; name="source"; filename="deal.jpg"\r\n'
+                 f'Content-Type: image/jpeg\r\n\r\n').encode() + photo + f"\r\n--{b}--\r\n".encode()
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": f"multipart/form-data; boundary={b}"})
+    else:
+        req = urllib.request.Request(url, data=urllib.parse.urlencode(fields).encode())
     try:
-        urllib.request.urlopen(urllib.request.Request(url, data=urllib.parse.urlencode(fields).encode()), timeout=60).read()
+        urllib.request.urlopen(req, timeout=60).read()
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", "ignore")[:200]
         hint = " (ma Trang het han/sai: chay lai nhap_facebook.bat)" if '"code":190' in body or e.code == 401 else ""
@@ -896,7 +925,8 @@ def main():
     bot = os.environ.get("TELEGRAM_BOT_TOKEN", "") or str(local.get("telegram_bot_token", "")).strip()
     chat = os.environ.get("TELEGRAM_CHAT_ID", "") or str(local.get("telegram_chat_id", "")).strip()
     channel = os.environ.get("TELEGRAM_CHANNEL_ID", "") or str(local.get("telegram_channel_id", "")).strip()   # kenh: bot tu dang tung san pham
-    fb_page, fb_token = str(local.get("fb_page_id", "")).strip(), str(local.get("fb_page_token", "")).strip()  # Trang Facebook (nhap_facebook.bat)
+    fb_page = os.environ.get("FB_PAGE_ID", "") or str(local.get("fb_page_id", "")).strip()       # Trang Facebook dang thang (nhap_facebook.bat)
+    fb_token = os.environ.get("FB_PAGE_TOKEN", "") or str(local.get("fb_page_token", "")).strip()
     make_hook = os.environ.get("MAKE_WEBHOOK", "") or str(local.get("make_webhook", "")).strip()   # Trang Facebook qua Make.com
     if not token or (not dry and not (bot and chat)):
         sys.exit("Thieu token (ACCESSTRADE_TOKEN / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID). Tren may: bam dup nhap_telegram.bat.")
@@ -1047,17 +1077,6 @@ def main():
                 send_product(bot, channel, it)
             except Exception as e:                     # kenh loi khong lam hong tin gui cho anh
                 print("LOI dang len kenh (bot da la admin kenh chua?):", e)
-        if fb_page and fb_token:
-            try:
-                fb_post(fb_page, fb_token, it)
-            except Exception as e:                     # Facebook loi khong lam hong Telegram
-                print("LOI dang Facebook:", e)
-                errors_fb = meta.get("fb_fail", 0) + 1
-                meta["fb_fail"] = errors_fb
-                if errors_fb == 3:
-                    safe_alert(bot, chat, f"⚠️ Đăng Facebook lỗi 3 lần liên tiếp:\n{str(e)[:250]}", dry)
-            else:
-                meta["fb_fail"] = 0
         sent_any = True
         sent_items.append(it)
         if it.get("src"):
@@ -1066,17 +1085,28 @@ def main():
             state["products"]["tt|" + it["id"]] = {"t": ts}
         if not combo_ok:
             time.sleep(1)
-    # --- Trang Facebook qua Make.com: 1 bai/lan chay, gioi han so bai/ngay (khong lam hong Telegram neu loi)
+    # --- Trang Facebook: 1 bai/lan chay, gioi han so bai/ngay (khong lam hong Telegram neu loi).
+    # Co ma Trang -> dang thang (khong ton credits Make); chua co -> gui qua Make nhu cu. Khong bao gio dang ca 2.
     fb_item = next((x for x in sent_items if x.get("image") and x.get("aff")), None)
-    if make_hook and fb_item and fb_quota_ok(meta, cfg, n):
+    direct = bool(fb_page and fb_token)
+    if (direct or make_hook) and fb_item and fb_quota_ok(meta, cfg, n):
         try:
-            make_post(make_hook, fb_item)
+            if dry:
+                print("[chay thu] se dang Facebook", "thang" if direct else "qua Make", ":", fb_item.get("title", "")[:60])
+            elif direct:
+                fb_post(fb_page, fb_token, fb_item)
+            else:
+                make_post(make_hook, fb_item)
             fb = meta.get("fb_make") or {}
             cnt = int(fb.get("count", 0)) + 1 if fb.get("date") == n.date().isoformat() else 1
             meta["fb_make"] = {"date": n.date().isoformat(), "count": cnt, "last": ts}
-            print(f"Da gui sang Make -> Trang Facebook (bai {cnt}/{cfg['fb_max_per_day']} hom nay)")
-        except Exception as e:
-            print("LOI gui sang Make (Facebook):", str(e)[:200])
+            meta["fb_fail"] = 0
+            print(f"Da dang Trang Facebook {'thang' if direct else 'qua Make'} (bai {cnt}/{cfg['fb_max_per_day']} hom nay)")
+        except Exception as e:                         # Facebook loi khong lam hong Telegram
+            print("LOI dang Facebook:", str(e)[:200])
+            meta["fb_fail"] = meta.get("fb_fail", 0) + 1
+            if meta["fb_fail"] == 3:
+                safe_alert(bot, chat, f"⚠️ Đăng Trang Facebook lỗi 3 lần liên tiếp:\n{str(e)[:250]}", dry)
     if msg:
         send_err = None
         try:
