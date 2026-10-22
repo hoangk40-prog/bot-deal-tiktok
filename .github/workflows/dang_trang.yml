@@ -1,0 +1,65 @@
+name: Dang video anh Trang Facebook
+
+on:
+  # CHUA BAT LICH: Make 8074072 con dang chay -> bat lich cung luc se dang trung. Anh tat Make roi moi bo dau # 4 dong duoi.
+  # schedule:
+  #   - cron: "0 5 * * *"          # 12h gio VN: video
+  #   - cron: "0 10 * * *"         # 17h gio VN: anh
+  #   - cron: "0 13 * * *"         # 20h gio VN: video
+  workflow_dispatch:
+    inputs:
+      kieu:
+        description: "Dang gi"
+        type: choice
+        options: [video, anh]
+        default: anh
+      an:
+        description: "Dang THU bai an roi xoa ngay (khong chuyen file)"
+        type: boolean
+        default: true
+      dry_run:
+        description: "Chi xem se dang file nao, KHONG dang"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: dang-trang
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests google-auth
+      - name: Dang Trang Facebook
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KIEU: ${{ github.event_name == 'workflow_dispatch' && inputs.kieu || (github.event.schedule == '0 10 * * *' && 'anh' || 'video') }}
+          AN: ${{ inputs.an && '1' || '' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: python dang_trang.py
+      - name: Luu trang thai da dang
+        if: always()
+        run: |
+          git config user.name "deal-bot"
+          git config user.email "deal-bot@users.noreply.github.com"
+          git add dang_trang.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "cap nhat dang trang"
+            for i in 1 2 3; do
+              git pull --rebase --autostash && git push && break
+              sleep 5
+            done
+          fi
