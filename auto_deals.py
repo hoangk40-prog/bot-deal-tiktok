@@ -57,6 +57,12 @@ DEFAULTS = {
     "fb_max_per_day": 6,           # Trang Facebook qua Make.com: toi da bao nhieu bai/ngay (anh chon 6 ngay 21/10 de danh credits Make cho video + anh)
     "fb_gap_hours": 2.5,           # 2 bai Facebook cach nhau it nhat bao nhieu gio (~3 gio: 7h,10h,13h,16h,19h,22h; de 2.5 vi GitHub chay lech gio vai phut)
     "zalo_combo": False,           # true: moi dot gui 1 ANH GHEP (danh so, co gia) + 1 TIN CHU GOP -> chi 2 lan copy sang Zalo
+    # ---- san pham win: moi ngay 1 lan gui 10 san pham hoa hong cao ve chat rieng
+    "nganh_win": "gia_dung",       # doi nganh: gia_dung / my_pham / thoi_trang / me_va_be (xem WIN_KEYWORDS). De "" = tat
+    "win_hour": 8,                 # gui luc may gio (gio VN), moi ngay 1 lan
+    "win_count": 10,               # so san pham win
+    "win_min_price": 100000,
+    "win_max_price": 300000,
 }
 
 
@@ -901,6 +907,96 @@ def fb_quota_ok(meta, cfg, n):
     return not recent(fb.get("last", ""), float(cfg["fb_gap_hours"]), n)
 
 
+# ---------------------------------------------------------------- san pham win (moi ngay 1 lan, chat rieng)
+# API khong tra nganh hang -> moi nganh tim theo vai tu khoa ban chay. Them nganh moi: them 1 dong vao day.
+WIN_KEYWORDS = {
+    "gia_dung": ("Gia dụng", ["nồi chiên không dầu", "máy xay sinh tố", "bình giữ nhiệt", "hộp đựng thực phẩm",
+                              "chảo chống dính", "kệ để đồ", "nồi cơm điện", "ấm siêu tốc", "máy hút bụi", "bộ nồi"]),
+    "my_pham": ("Mỹ phẩm", ["serum", "kem chống nắng", "sữa rửa mặt", "son", "kem dưỡng", "nước tẩy trang",
+                            "toner", "mặt nạ", "dầu gội", "nước hoa"]),
+    "thoi_trang": ("Thời trang", ["áo thun", "quần jean", "váy", "giày", "túi xách", "áo khoác",
+                                  "áo sơ mi", "dép", "đồ bộ", "balo"]),
+    "me_va_be": ("Mẹ và bé", ["bỉm", "sữa bột", "đồ chơi trẻ em", "quần áo trẻ em", "bình sữa", "khăn sữa",
+                              "xe đẩy", "địu em bé", "máy hâm sữa", "ghế ăn dặm"]),
+}
+
+
+def win_due(cfg, meta, n):
+    """Den gio gui san pham win va hom nay chua gui."""
+    return bool(cfg.get("nganh_win")) and n.hour >= int(cfg["win_hour"]) and meta.get("win_date") != n.date().isoformat()
+
+
+def pick_win(items, cfg):
+    """Loc gia, con hang, co nguoi mua, hoa hong; xep theo tien hoa hong (co tinh luot ban). Moi shop 1 san pham."""
+    cands, seen = [], set()
+    for x in items:
+        it = tt_info(x)
+        if not it["id"] or it["id"] in seen or not it["url"] or not it["stock"]:
+            continue
+        seen.add(it["id"])
+        if not (cfg["win_min_price"] <= it["price"] <= cfg["win_max_price"]):
+            continue
+        if (it["sold_known"] and it["sold"] < cfg["min_sold"]) or it["pct"] < cfg["min_commission"]:
+            continue
+        cands.append((it["commission"] * math.log10(it["sold"] + 10), it))
+    cands.sort(key=lambda c: -c[0])
+    out, shops = [], set()
+    for _, it in cands:
+        if it["shop"] and it["shop"] in shops:
+            continue
+        shops.add(it["shop"])
+        out.append(it)
+    return out
+
+
+def win_text(items, ten_nganh, n):
+    lines = [f"🏆 Sản phẩm win hôm nay – {ten_nganh} ({n:%d/%m})",
+             f"Giá {vnd(items[0]['_min'])}–{vnd(items[0]['_max'])}, xếp theo tiền hoa hồng", ""]
+    for i, it in enumerate(items, 1):
+        t = it["title"] if len(it["title"]) <= 80 else it["title"][:77].rstrip() + "..."
+        info = [f"💰 {vnd(it['price'])}", f"🎁 HH {it['pct']:.1f}% ≈ {vnd(it['commission'])}".replace(".", ",", 1)]
+        if it.get("sold"):
+            info.append(f"🛒 {it['sold']:,} đã bán".replace(",", "."))
+        lines += [f"{i}. {t}", "   " + " · ".join(info), f"   👉 {it['aff']}", ""]
+    return "\n".join(lines).strip()
+
+
+def send_win(token, cfg, state, n, bot, chat, dry):
+    """Quet san pham win theo nganh, gui 1 tin ve chat rieng. Loi o day khong lam hong phan gui deal."""
+    key = str(cfg.get("nganh_win") or "").strip().lower()
+    if key not in WIN_KEYWORDS:
+        print(f"[win] Nganh '{key}' khong co. Chon 1 trong: {', '.join(WIN_KEYWORDS)}")
+        return
+    ten, kws = WIN_KEYWORDS[key]
+    raw = []
+    for kw in kws:                                     # moi tu khoa 2 trang (40 san pham): chi ~1/10 lot khoang gia
+        p = {"sort_field": "BEST_SELLERS", "limit": 20, "title_keywords": kw}
+        for _ in range(2):
+            prods, page_token, _ = tt_call(token, p, f"win '{kw}'")
+            raw += prods
+            time.sleep(2)
+            if not page_token:
+                break
+            p = dict(p, page_token=page_token)
+    out = []
+    for it in pick_win(raw, cfg):
+        if len(out) >= int(cfg["win_count"]):
+            break
+        d = make_link(token, it["url"], it["id"])
+        if d:
+            it["aff"] = d.get("aff_short_url") or d.get("aff_url")
+            it["_min"], it["_max"] = cfg["win_min_price"], cfg["win_max_price"]
+            out.append(it)
+    print(f"[win] {len(raw)} san pham quet -> chon {len(out)} ({ten})")
+    if dry:
+        print("\n" + (win_text(out, ten, n) if out else "[win] khong co san pham nao dat") + "\n")
+        return
+    if out:
+        send_telegram(bot, chat, win_text(out, ten, n))
+    state["meta"]["win_date"] = n.date().isoformat()     # khong co san pham dat cung tinh la xong hom nay (do goi API moi gio)
+    save_json(STATE_FILE, state)
+
+
 def safe_alert(bot, chat, text, dry):
     if dry or not (bot and chat):
         print("[canh bao]", text)
@@ -937,6 +1033,11 @@ def main():
     links_file = read_links()
     cleanup_state(state, set(links_file), cfg, n)
     meta, ts = state["meta"], n.isoformat()
+    if cfg["tiktok"] and (win_due(cfg, meta, n) or os.environ.get("WIN") == "1"):   # WIN=1: chay thu san pham win ngay
+        try:
+            send_win(token, cfg, state, n, bot, chat, dry)
+        except Exception as e:
+            print("[win] LOI:", str(e)[:200])
     do_send, slot = send_due(cfg, meta, n, force)
     if not do_send:
         print(f"Chua den gio gui ({n.hour}h, khung gio gui: {cfg['send_hours']}), khong co gi de lam.")

@@ -245,7 +245,7 @@ check("FORCE luon gui", A.send_due(cfgs, {"slots_done": ["2026-10-12@11", "2026-
 
 print("9) main() voi TikTok: gui anh tung san pham, doi link, khung gio")
 tmp9 = tempfile.mkdtemp(); A.HERE = tmp9
-json.dump({"shopee": False, "tiktok": True, "send_hours": [11], "max_products": 2},
+json.dump({"shopee": False, "tiktok": True, "send_hours": [11], "max_products": 2, "nganh_win": ""},
           open(os.path.join(tmp9, "config.json"), "w"))
 open(os.path.join(tmp9, "my_links.txt"), "w").write("https://vt.tiktok.com/mine1\nhttps://vt.tiktok.com/bad\nhttps://shorten.asia/san\n")
 sent.clear(); posts = []
@@ -294,6 +294,26 @@ check("voucher giam thang 120k xep cao hon '10% toi da 550k'", a2["score"] > a1[
 k = A.parse_offer(offer(92, "Kangaroo Official Store", "Giảm 600,000 VNĐ cho đơn tối thiểu 6,390,000 VNĐ"))
 j = A.parse_offer(offer(93, "Judydoll Official Store", "Giảm 236,750 VNĐ cho đơn tối thiểu 0 VNĐ"))
 check("voucher 600k nhung don toi thieu 6,39 trieu xep THAP hon voucher 236k don 0d", j["score"] > k["score"], f"{j['score']} vs {k['score']}")
+
+print("11) San pham win: loc gia 100k-300k, xep hoa hong, moi ngay 1 lan")
+cfgw = dict(A.DEFAULTS)
+cands = [tt(50, 90000), tt(51, 350000), tt(52, 200000, amount=5000), tt(53, 250000, amount=20000),
+         tt(54, 150000, amount=30000, shop="Shop53"), tt(55, 200000, sold=5), tt(56, 200000, rate=0.01)]
+pw = A.pick_win(cands, cfgw)
+check("chi lay gia 100k-300k, xep theo hoa hong, moi shop 1 sp", [it["id"] for it in pw] == ["54", "52"], str([it["id"] for it in pw]))
+check("den 8h va hom nay chua gui thi gui", A.win_due(cfgw, {}, at(12, 8)) and not A.win_due(cfgw, {}, at(12, 7)))
+check("hom nay gui roi thi thoi", not A.win_due(cfgw, {"win_date": "2026-10-12"}, at(12, 15)))
+check("nganh_win de trong = tat", not A.win_due(dict(cfgw, nganh_win=""), {}, at(12, 9)))
+kw_seen = []; sent.clear()
+A.tt_get = lambda token, p: kw_seen.append(p["title_keywords"]) or {"status": True, "data": {"products": [tt(60 + len(kw_seen), 200000)]}}
+A.make_link = lambda token, url, pid="", full=False: {"aff_short_url": "https://shorten.asia/w" + pid}
+stw = A.migrate_state({})
+A.send_win("x", dict(cfgw, nganh_win="my_pham"), stw, at(12, 8), "b", "c", False)
+check("doi nganh = doi tu khoa tim", kw_seen == A.WIN_KEYWORDS["my_pham"][1], str(kw_seen))
+check("tin co tieu de + 10 san pham + link", len(sent) == 1 and sent[0].startswith("🏆 Sản phẩm win hôm nay – Mỹ phẩm")
+      and sent[0].count("shorten.asia/w") == 10, str(sent))
+check("nho da gui hom nay", stw["meta"].get("win_date") == "2026-10-12")
+A.time.sleep = real_sleep
 
 print()
 print("TAT CA DAT" if not fails else f"{len(fails)} LOI: " + "; ".join(fails))

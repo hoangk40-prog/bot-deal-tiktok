@@ -15,5 +15,6 @@
   "min_sold": 100,
   "min_commission": 3,
   "product_cooldown_days": 4,
-  "zalo_combo": false
+  "zalo_combo": false,
+  "nganh_win": "gia_dung"
 }
