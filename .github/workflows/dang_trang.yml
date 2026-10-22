@@ -1,11 +1,11 @@
 name: Dang video anh Trang Facebook
 
 on:
-  # CHUA BAT LICH: Make 8074072 con dang chay -> bat lich cung luc se dang trung. Anh tat Make roi moi bo dau # 4 dong duoi.
-  # schedule:
-  #   - cron: "0 5 * * *"          # 12h gio VN: video
-  #   - cron: "0 10 * * *"         # 17h gio VN: anh
-  #   - cron: "0 13 * * *"         # 20h gio VN: video
+  # Make 8074072 da TAT 22/10 -> bot nay dang thay. Dung bat lai Make (dang trung).
+  schedule:
+    - cron: "0 5 * * *"            # 12h gio VN: video
+    - cron: "0 10 * * *"           # 17h gio VN: anh
+    - cron: "0 13 * * *"           # 20h gio VN: video
   workflow_dispatch:
     inputs:
       kieu:
