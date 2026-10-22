@@ -313,6 +313,12 @@ check("doi nganh = doi tu khoa tim", kw_seen == A.WIN_KEYWORDS["my_pham"][1], st
 check("tin co tieu de + 10 san pham + link", len(sent) == 1 and sent[0].startswith("🏆 Sản phẩm win hôm nay – Mỹ phẩm")
       and sent[0].count("shorten.asia/w") == 10, str(sent))
 check("nho da gui hom nay", stw["meta"].get("win_date") == "2026-10-12")
+check("hang hop mua: thang 10 binh giu nhiet hop, quat khong", A.hop_mua("Bình Giữ Nhiệt Inox", 10)
+      and not A.hop_mua("Quạt mini cầm tay", 10) and A.hop_mua("Quạt mini cầm tay", 6))
+check("chan (chăn) khong nham voi chan (chân)", not A.hop_mua("Kệ kê chân bàn", 11) and A.hop_mua("Chăn điện sưởi", 11))
+hm = [dict(tt(70, 200000, amount=10000), title="Bình giữ nhiệt"), dict(tt(71, 200000, amount=13000), title="Quạt mini")]
+pw = A.pick_win(hm, cfgw, 10)
+check("hang hop mua duoc uu tien (x1,5) va danh dau 🍂", [it["id"] for it in pw] == ["70", "71"] and pw[0]["mua"])
 check("moi san pham co link tim kiem TikTok", sent[0].count("tiktok.com/search?q=") == 10)
 check("link tim kiem bo phan quang cao trong ngoac",
       A.tiktok_search("[DEAL 20/10] Chảo chống dính CV 26cm") == "https://www.tiktok.com/search?q="

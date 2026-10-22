@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Tool gom deal Shopee / TikTok Shop (qua Accesstrade) - ban co cua so.
 Bam dup file nay de mo. Khong can cai them gi ngoai Python."""
-import json, os, datetime, threading, traceback
+import json, os, sys, datetime, threading, traceback, subprocess
 import urllib.request, urllib.parse, urllib.error
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -226,6 +226,14 @@ class App(tk.Tk):
         ttk.Checkbutton(top, text="Hiện dữ liệu thô (để kiểm tra lỗi)", variable=self.v_raw
                         ).grid(row=3, column=3, columnspan=2, sticky="w")
 
+        bar0 = ttk.Frame(f); bar0.pack(fill="x", padx=8, pady=(0, 4))
+        self.b_run = ttk.Button(bar0, text="▶ Chạy ngay (gửi Deal + Sản phẩm win về Telegram)", command=self.on_run_now)
+        self.b_run.pack(side="left", padx=3)
+        ttk.Label(bar0, text="Ngành win:").pack(side="left", padx=(12, 3))
+        self.v_nganh = tk.StringVar(value=str(self.cfg.get("nganh_win", "gia_dung")))
+        ttk.Combobox(bar0, textvariable=self.v_nganh, width=12,
+                     values=list(AD.WIN_KEYWORDS) if AD is not None else ["gia_dung"]).pack(side="left")
+
         bar = ttk.Frame(f); bar.pack(fill="x", padx=8)
         self.b_off = ttk.Button(bar, text="🎁 Lấy khuyến mãi / mã giảm giá", command=self.on_offers); self.b_off.pack(side="left", padx=3)
         self.b_get = ttk.Button(bar, text="Lấy sản phẩm (thử)", command=self.on_get); self.b_get.pack(side="left", padx=3)
@@ -267,7 +275,7 @@ class App(tk.Tk):
             token = self.v_token.get().strip()
             new = {"shopee": self.v_shopee.get(), "tiktok": self.v_tiktok.get(),
                    "min_discount": int(self.v_min.get()), "max_price": int(self.v_price.get()),
-                   "max_items": int(self.v_n.get())}
+                   "max_items": int(self.v_n.get()), "nganh_win": self.v_nganh.get().strip()}
         except ValueError:
             messagebox.showwarning("Sai dữ liệu", "Các ô Giảm tối thiểu, Giá tối đa, Số sản phẩm phải là số nguyên (không có dấu chấm, dấu phẩy).")
             return False
@@ -281,8 +289,15 @@ class App(tk.Tk):
         base.update(new)
         with open(CFG_PATH, "w", encoding="utf-8") as f:
             json.dump(base, f, ensure_ascii=False, indent=2)
+        local = {}                                   # giu nguyen ma Telegram / Facebook trong config.local.json
+        try:
+            with open(LOCAL_PATH, encoding="utf-8") as f:
+                local = json.load(f)
+        except Exception:
+            pass
+        local["token"] = token
         with open(LOCAL_PATH, "w", encoding="utf-8") as f:
-            json.dump({"token": token}, f, ensure_ascii=False, indent=2)
+            json.dump(local, f, ensure_ascii=False, indent=2)
         self.cfg = {**DEFAULT_CFG, **base, "token": token}
         if not quiet:
             self.status.set("Đã lưu cài đặt.")
@@ -447,6 +462,33 @@ class App(tk.Tk):
             except Exception as e:
                 txt = f"LỖI khi lấy chiến dịch: {e}"
             self.after(0, lambda: (self.show(txt), self.status.set("Xong.")))
+        threading.Thread(target=work, daemon=True).start()
+
+    def on_run_now(self):
+        """Chay bot ngay: quet + gui Deal hom nay va San pham win ve chat Telegram rieng (khong dang kenh / Trang FB)."""
+        if not self.save_cfg(quiet=True):
+            return
+        self.b_run.config(state="disabled"); self.show("")
+        self.status.set("Đang quét và gửi, đợi khoảng 1–3 phút...")
+        def work():
+            env = dict(os.environ, FORCE="true", WIN="1", CHI_RIENG="1", PYTHONIOENCODING="utf-8")
+            try:
+                r = subprocess.run([sys.executable, os.path.join(HERE, "auto_deals.py")], cwd=HERE, env=env,
+                                   capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900,
+                                   creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                txt, ok = (r.stdout or "") + (r.stderr or ""), r.returncode == 0
+            except Exception as e:
+                txt, ok = f"LỖI: {e}", False
+            try:
+                with open(os.path.join(HERE, "nhat_ky.txt"), "a", encoding="utf-8") as f:
+                    f.write(f"===== {datetime.datetime.now():%d/%m/%Y %H:%M} (nut Chay ngay) =====\n{txt}\n")
+            except Exception:
+                pass
+            def done():
+                self.show(txt)
+                self.status.set("✅ Xong, xem Telegram." if ok else "Có lỗi, xem chi tiết ở khung bên dưới.")
+                self.b_run.config(state="normal")
+            self.after(0, done)
         threading.Thread(target=work, daemon=True).start()
 
     def on_copy(self):

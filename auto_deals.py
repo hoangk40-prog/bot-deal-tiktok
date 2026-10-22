@@ -9,6 +9,8 @@ KHONG theo doi lich su gia: Shopee cam cong cu xem lich su gia (phat 10 trieu/la
 Bien moi truong:  ACCESSTRADE_TOKEN, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
                   FORCE=true  -> bo qua khung gio gui (chay tay)
                   DRY_RUN=1   -> chi in tin nhan, KHONG gui, KHONG luu trang thai
+                  WIN=1       -> gui 'San pham win hom nay' ngay (khong doi gio)
+                  CHI_RIENG=1 -> chi gui chat rieng, khong dang kenh / Trang Facebook (nut 'Chay ngay')
 Cai dat: config.json (khong chua token). Token chay tren may: config.local.json (khong dua len GitHub).
 """
 import datetime
@@ -921,13 +923,31 @@ WIN_KEYWORDS = {
 }
 
 
+# Hang theo mua: (cac thang, tu trong ten san pham - viet khong dau). San pham hop mua duoc cong diem x1,5.
+MUA_VU = [
+    ((10, 11, 12, 1, 2), ["giu nhiet", "may suoi", "chan dien", "chan long", "chan ga", "ao len", "ao khoac", "khan quan",
+                          "duong am", "son duong", "noi lau", "bep lau", "may say", "nong lanh"]),
+    ((12, 1, 2), ["tet", "li xi", "hop qua", "banh keo", "mut", "trang tri", "den led", "ao dai"]),
+    ((3, 4, 5, 6, 7, 8), ["quat", "chong nang", "dieu hoa", "lam mat", "do boi", "binh nuoc", "da lanh", "muoi"]),
+    ((8, 9), ["balo", "cap sach", "den hoc", "ban hoc"]),
+    ((9, 10, 11), ["qua tang", "hop qua"]),        # Trung thu, 20/10, 20/11
+]
+
+
+def hop_mua(title, month):
+    t = fold(title)
+    return any(re.search(r"\b" + w + r"\b", t) for months, words in MUA_VU if month in months for w in words)
+
+
 def win_due(cfg, meta, n):
     """Den gio gui san pham win va hom nay chua gui."""
     return bool(cfg.get("nganh_win")) and n.hour >= int(cfg["win_hour"]) and meta.get("win_date") != n.date().isoformat()
 
 
-def pick_win(items, cfg):
-    """Loc gia, con hang, co nguoi mua, hoa hong; xep theo tien hoa hong (co tinh luot ban). Moi shop 1 san pham."""
+def pick_win(items, cfg, month=None):
+    """Loc gia, con hang, co nguoi mua, hoa hong; xep theo tien hoa hong (co tinh luot ban), hang hop mua x1,5.
+    Moi shop 1 san pham."""
+    month = month or now().month
     cands, seen = [], set()
     for x in items:
         it = tt_info(x)
@@ -938,7 +958,8 @@ def pick_win(items, cfg):
             continue
         if (it["sold_known"] and it["sold"] < cfg["min_sold"]) or it["pct"] < cfg["min_commission"]:
             continue
-        cands.append((it["commission"] * math.log10(it["sold"] + 10), it))
+        it["mua"] = hop_mua(it["title"], month)
+        cands.append((it["commission"] * math.log10(it["sold"] + 10) * (1.5 if it["mua"] else 1), it))
     cands.sort(key=lambda c: -c[0])
     out, shops = [], set()
     for _, it in cands:
@@ -958,13 +979,13 @@ def tiktok_search(title):
 
 def win_text(items, ten_nganh, n):
     lines = [f"🏆 Sản phẩm win hôm nay – {ten_nganh} ({n:%d/%m})",
-             f"Giá {vnd(items[0]['_min'])}–{vnd(items[0]['_max'])}, xếp theo tiền hoa hồng", ""]
+             f"Giá {vnd(items[0]['_min'])}–{vnd(items[0]['_max'])}, xếp theo tiền hoa hồng, ưu tiên hàng hợp mùa 🍂", ""]
     for i, it in enumerate(items, 1):
         t = it["title"] if len(it["title"]) <= 80 else it["title"][:77].rstrip() + "..."
         info = [f"💰 {vnd(it['price'])}", f"🎁 HH {it['pct']:.1f}% ≈ {vnd(it['commission'])}".replace(".", ",", 1)]
         if it.get("sold"):
             info.append(f"🛒 {it['sold']:,} đã bán".replace(",", "."))
-        lines += [f"{i}. {t}", "   " + " · ".join(info), f"   👉 {it['aff']}",
+        lines += [f"{i}. {'🍂 ' if it.get('mua') else ''}{t}", "   " + " · ".join(info), f"   👉 {it['aff']}",
                   f"   🔍 Xem trên TikTok: {tiktok_search(it['title'])}", ""]
     return "\n".join(lines).strip()
 
@@ -987,7 +1008,7 @@ def send_win(token, cfg, state, n, bot, chat, dry):
                 break
             p = dict(p, page_token=page_token)
     out = []
-    for it in pick_win(raw, cfg):
+    for it in pick_win(raw, cfg, n.month):
         if len(out) >= int(cfg["win_count"]):
             break
         d = make_link(token, it["url"], it["id"])
@@ -1032,6 +1053,8 @@ def main():
     fb_page = os.environ.get("FB_PAGE_ID", "") or str(local.get("fb_page_id", "")).strip()       # Trang Facebook dang thang (nhap_facebook.bat)
     fb_token = os.environ.get("FB_PAGE_TOKEN", "") or str(local.get("fb_page_token", "")).strip()
     make_hook = os.environ.get("MAKE_WEBHOOK", "") or str(local.get("make_webhook", "")).strip()   # Trang Facebook qua Make.com
+    if os.environ.get("CHI_RIENG") == "1":             # nut 'Chay ngay' tren may: chi gui chat rieng (sent.json tren may cu hon GitHub -> tranh dang trung kenh/Trang)
+        channel = fb_page = fb_token = make_hook = ""
     if not token or (not dry and not (bot and chat)):
         sys.exit("Thieu token (ACCESSTRADE_TOKEN / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID). Tren may: bam dup nhap_telegram.bat.")
     if not cfg["merchants"] and not cfg["tiktok"]:
