@@ -1246,7 +1246,7 @@ def main():
         save_json(STATE_FILE, state) if not dry else None
         return
 
-    add_hooks(posts, cfg)                         # AI viet loi chao hang cho Telegram (Facebook giu tin cu, xem duoi)
+    add_hooks(posts, cfg)                         # AI viet loi chao hang cho Telegram + Trang Facebook
     if dry:
         if cfg["zalo_combo"] and len(posts) >= 2:
             jpeg = make_collage(posts)
@@ -1295,9 +1295,7 @@ def main():
             time.sleep(1)
     # --- Trang Facebook: 1 bai/lan chay, gioi han so bai/ngay (khong lam hong Telegram neu loi).
     # Co ma Trang -> dang thang (khong ton credits Make); chua co -> gui qua Make nhu cu. Khong bao gio dang ca 2.
-    fb_item = next((x for x in sent_items if x.get("image") and x.get("aff")), None)
-    if fb_item:
-        fb_item = {k: v for k, v in fb_item.items() if k != "hook"}   # Trang Facebook: giu tin nhu cu (anh chi duyet Zalo + Telegram)
+    fb_item = next((x for x in sent_items if x.get("image") and x.get("aff")), None)   # co loi chao AI nhu Telegram (anh muon 23/10)
     direct = bool(fb_page and fb_token)
     if (direct or make_hook) and fb_item and fb_quota_ok(meta, cfg, n):
         try:
