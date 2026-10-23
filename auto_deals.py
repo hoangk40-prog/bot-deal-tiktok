@@ -1053,7 +1053,7 @@ def main():
     fb_page = os.environ.get("FB_PAGE_ID", "") or str(local.get("fb_page_id", "")).strip()       # Trang Facebook dang thang (nhap_facebook.bat)
     fb_token = os.environ.get("FB_PAGE_TOKEN", "") or str(local.get("fb_page_token", "")).strip()
     make_hook = os.environ.get("MAKE_WEBHOOK", "") or str(local.get("make_webhook", "")).strip()   # Trang Facebook qua Make.com
-    win_chat = (os.environ.get("TELEGRAM_WIN_CHAT_ID", "") or str(local.get("telegram_win_chat_id", "")).strip()
+    win_chat = (os.environ.get("TELEGRAM_WIN_CHAT_ID", "").strip() or str(local.get("telegram_win_chat_id", "")).strip()
                 or chat)                       # nhom rieng chi nhan 'San pham win'; chua co thi gui chat rieng
     if os.environ.get("CHI_RIENG") == "1":             # nut 'Chay ngay' tren may: chi gui chat rieng (sent.json tren may cu hon GitHub -> tranh dang trung kenh/Trang)
         channel = fb_page = fb_token = make_hook = ""
