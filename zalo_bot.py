@@ -262,6 +262,7 @@ def dang():
     if kieu == "gop":
         text = ad.combo_text(items)
     else:                                         # moi mon 1 anh + 1 tin chu (giong Telegram)
+        ad.add_hooks(items, ad.load_config())     # AI viet loi chao hang (loi thi gui nhu cu)
         caps = [ad.caption(it) for it in items]
         text = "\n\n――――――――\n\n".join(caps)
         pics = []

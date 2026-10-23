@@ -631,12 +631,84 @@ def from_link_data(d, link):
             "image": d.get("product_image") or "", "aff": d.get("aff_short_url") or d.get("aff_url"), "cat": ""}
 
 
+# ---------------------------------------------------------------- loi chao hang do AI viet (Gemini, mien phi)
+GEMINI_MODELS = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.7-flash", "gemini-flash-lite-latest"]   # 3.7 hay cham qua 90s
+HOOK_SCHEMA = {"type": "OBJECT", "properties": {"items": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+    "so": {"type": "INTEGER"}, "mo_dau": {"type": "STRING"}}, "required": ["so", "mo_dau"]}}}, "required": ["items"]}
+
+
+def gemini_key():
+    """GitHub: secret GEMINI_API_KEY. May: config.local.json 'gemini_key', khong co thi lay khoa cua Xuong Video (cung Drive)."""
+    k = os.environ.get("GEMINI_API_KEY", "").strip() or str(load_json("config.local.json", {}).get("gemini_key", "")).strip()
+    if k:
+        return k
+    try:
+        with open(os.path.join(os.path.dirname(HERE), "xuong_video", "tai_render_data", "cai_dat.json"), encoding="utf-8") as f:
+            return str(json.load(f).get("gemini_key") or "").strip()
+    except Exception:
+        return ""
+
+
+def _nums(s):
+    return {re.sub(r"[.,]", "", x) for x in re.findall(r"\d[\d.,]*\d|\d", s)}
+
+
+def add_hooks(items, cfg):
+    """Gan it['hook'] = 2-3 cau chao hang kieu 'Troi oi ca nha oi...' cho tung mon. AI loi / het luot / bia so -> bo qua
+    (tin gui nhu cu). CHI dung so lieu that: cau nao co con so khong co trong du lieu thi bo cau chao hang mon do."""
+    if not items or not cfg.get("ai_hook", True):
+        return
+    key = gemini_key()
+    if not key:
+        print("  [AI chao hang] chua co khoa Gemini -> gui tin nhu cu")
+        return
+    facts = [{"so": i + 1, "ten": it["title"], "gia": round(it.get("price") or 0), "gia_den": round(it.get("price_max") or 0),
+              "da_ban": it.get("sold") or 0, "sao": round(it.get("rating") or 0, 1), "shop": it.get("shop", "")}
+             for i, it in enumerate(items)]
+    prompt = ("Bạn là người bán hàng online Việt Nam viết lời chào deal cho nhóm Zalo / kênh Telegram, giọng thân mật, hào hứng "
+              "như đang reo lên với bạn bè (\"Trời ơi cả nhà ơi\", \"ce ơi\", \"khẩn cầu\", \"đừng bỏ qua\"), có 1-2 emoji, mỗi "
+              "món một kiểu mở đầu khác nhau. Mỗi sản phẩm viết 1 đoạn MỞ ĐẦU 2-3 câu ngắn (tối đa 220 ký tự), gây tò mò, nói lợi "
+              "ích thật của sản phẩm theo tên.\nLUẬT BẮT BUỘC: CHỈ dùng con số có trong dữ liệu (giá, số người đã mua, số sao) "
+              "hoặc trong tên sản phẩm; KHÔNG tự tính, KHÔNG bịa giá gốc, % giảm, quà tặng, voucher, freeship, hạn chót, số lượng "
+              "còn lại. gia_den > 0 thì nói \"chỉ từ <gia>đ\". Viết số tiền dạng 359.280đ. Không viết link, không nhắc Shopee.\n"
+              "Trả JSON {\"items\": [{\"so\": 1, \"mo_dau\": \"...\"}]}\nDỮ LIỆU: " + json.dumps(facts, ensure_ascii=False))
+    body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {
+        "temperature": 0.9, "responseMimeType": "application/json", "responseSchema": HOOK_SCHEMA}}).encode()
+    for model in GEMINI_MODELS:
+        try:
+            req = urllib.request.Request(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
+                                         data=body, headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=45) as r:      # model nao cham thi sang model ke (tong toi da ~3 phut)
+                j = json.loads(r.read().decode("utf-8"))
+            out = json.loads(j["candidates"][0]["content"]["parts"][0]["text"]).get("items") or []
+        except Exception as e:
+            print(f"  [AI chao hang] {model} loi: {describe_error(e) if isinstance(e, urllib.error.HTTPError) else str(e)[:80]}")
+            continue
+        ok = 0
+        for x in out:
+            i = int(x.get("so", 0)) - 1
+            hook = str(x.get("mo_dau") or "").strip()
+            if not (0 <= i < len(items)) or not hook:
+                continue
+            it, f_ = items[i], facts[i]
+            allowed = _nums(f"{f_['gia']} {f_['gia_den']} {f_['da_ban']} {f_['sao']} {it['title']} {vnd(f_['gia'])} "
+                            f"{vnd(f_['gia_den'] or 0)} {f_['da_ban']:,}".replace(",", "."))
+            bad = _nums(hook) - allowed
+            if bad:
+                print(f"  [AI chao hang] mon {i + 1} co so la {sorted(bad)} -> bo")
+                continue
+            it["hook"] = hook[:300]
+            ok += 1
+        print(f"  [AI chao hang] {model}: viet duoc {ok}/{len(items)} mon")
+        return
+
+
 def caption(it):
-    """Chu thich 1 san pham, dan thang vao nhom Zalo duoc."""
+    """Chu thich 1 san pham, dan thang vao nhom Zalo duoc. Co it['hook'] (AI viet) thi dat len dau."""
     title = it["title"] if len(it["title"]) <= 120 else it["title"][:117].rstrip() + "..."
     sold = it.get("sold") or 0
     head = "⚡ DEAL HOT TIKTOK SHOP" if sold < 10000 else "⚡ SIÊU HOT TIKTOK SHOP – HÀNG BÁN CHẠY"
-    lines = [head, f"🔥 {title}" if title else "🔥 Deal hot hôm nay", ""]
+    lines = ([it["hook"], ""] if it.get("hook") else []) + [head, f"🔥 {title}" if title else "🔥 Deal hot hôm nay", ""]
     if it.get("price"):
         if it.get("orig"):         # chi khi API tra gia goc that su cao hon
             save = it["orig"] - it["price"]
@@ -1174,6 +1246,7 @@ def main():
         save_json(STATE_FILE, state) if not dry else None
         return
 
+    add_hooks(posts, cfg)                         # AI viet loi chao hang cho Telegram (Facebook giu tin cu, xem duoi)
     if dry:
         if cfg["zalo_combo"] and len(posts) >= 2:
             jpeg = make_collage(posts)
@@ -1223,6 +1296,8 @@ def main():
     # --- Trang Facebook: 1 bai/lan chay, gioi han so bai/ngay (khong lam hong Telegram neu loi).
     # Co ma Trang -> dang thang (khong ton credits Make); chua co -> gui qua Make nhu cu. Khong bao gio dang ca 2.
     fb_item = next((x for x in sent_items if x.get("image") and x.get("aff")), None)
+    if fb_item:
+        fb_item = {k: v for k, v in fb_item.items() if k != "hook"}   # Trang Facebook: giu tin nhu cu (anh chi duyet Zalo + Telegram)
     direct = bool(fb_page and fb_token)
     if (direct or make_hook) and fb_item and fb_quota_ok(meta, cfg, n):
         try:
