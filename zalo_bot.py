@@ -26,6 +26,7 @@ OUT_DIR = os.path.join(os.environ.get("LOCALAPPDATA", ad.HERE), "zalo_bot")
 ZALO = "https://chat.zalo.me/"
 LOGGED_IN = "#contact-search-input"          # o tim kiem chi co khi da dang nhap
 INPUT = "#richInput"                          # o soan tin
+PHOTO_BTN = "[data-translate-title='STR_SEND_PHOTO']"   # nut "Gui hinh anh" tren thanh cong cu khung chat
 
 
 def log(*a):
@@ -109,36 +110,40 @@ def open_group(page, name):
     for ch in name:                           # go tung chu nhu nguoi
         page.keyboard.type(ch, delay=random.randint(60, 160))
     human_pause(1.5, 2.5)
-    hit = page.get_by_text(name, exact=True).first
+    hit = page.get_by_text(name, exact=True).locator("visible=true").first   # ban an cung ten nam san trong trang
     hit.wait_for(timeout=15000)
     hit.click()
     page.wait_for_selector(INPUT, timeout=15000)
     human_pause()
     # kiem tra dung nhom: ten nhom hien o dau khung chat
-    if page.locator("header, #header, .header-title").filter(has_text=name).count() == 0 and \
-            page.get_by_text(name, exact=True).count() < 2:
-        raise RuntimeError(f"Khong chac da mo dung nhom '{name}'")
+    title = page.locator(".header-title").first.inner_text().replace("\xa0", " ").strip()
+    if title != name:
+        raise RuntimeError(f"Mo nham khung chat '{title}' (can '{name}')")
 
 
 def send_image(page, path):
-    inp = page.locator("input[type=file][accept*='image']").first
-    if inp.count() == 0:
-        raise RuntimeError("Khong thay nut gui anh tren Zalo Web (giao dien doi?)")
-    inp.set_input_files(path)
-    human_pause(3, 5)                         # cho anh tai len
+    btn = page.locator(PHOTO_BTN).first
+    if btn.count() == 0:
+        raise RuntimeError("Khong thay nut 'Gui hinh anh' tren Zalo Web (giao dien doi?)")
+    with page.expect_file_chooser(timeout=15000) as fc:
+        btn.click()
+    fc.value.set_files(path)
+    human_pause(4, 6)                         # cho anh tai len + gui
 
 
 def send_text(page, text):
+    """Dan ca tin 1 lan (go tung dong lam Zalo nuot mat dong co emoji so 1️⃣ 2️⃣)."""
     box = page.locator(INPUT)
     box.click()
-    lines = text.split("\n")
-    for i, line in enumerate(lines):
-        if line:
-            page.keyboard.insert_text(line)
-            human_pause(0.2, 0.6)
-        if i < len(lines) - 1:
-            page.keyboard.press("Shift+Enter")
-    human_pause(1, 2)
+    human_pause(0.5, 1)
+    page.evaluate("""([sel, text]) => { const el = document.querySelector(sel); el.focus();
+        const dt = new DataTransfer(); dt.setData('text/plain', text);
+        el.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }""",
+                  [INPUT, text])
+    human_pause(1.5, 2.5)
+    got = box.inner_text().replace("\xa0", " ")
+    if len(got.strip()) < len(text.strip()) * 0.8:
+        raise RuntimeError(f"Dan tin vao Zalo bi thieu ({len(got)}/{len(text)} chu)")
 
 
 def dang():
@@ -178,8 +183,12 @@ def dang():
                 sys.exit(1)
             open_group(page, nhom)
             log(f"Da mo nhom '{nhom}'")
-            if dry:
+            if dry:                           # dien tin vao o soan de xem, chup man hinh, xoa di - KHONG gui
+                send_text(page, text)
                 page.screenshot(path=os.path.join(OUT_DIR, "xem_thu.png"))
+                page.locator(INPUT).click()
+                page.keyboard.press("Control+a")
+                page.keyboard.press("Delete")
                 log("DRY_RUN: khong gui. Anh chup man hinh: xem_thu.png")
                 return
             if jpeg:
