@@ -145,9 +145,96 @@ def send_text(page, text):
     if close.count():
         close.first.click()
         human_pause(0.4, 0.8)
+    box.click()                               # bam tat khung xem truoc lam roi o soan -> dua con tro ve lai, khong thi Enter khong gui
+    page.keyboard.press("Control+End")
     got = box.inner_text().replace("\xa0", " ")
     if len(got.strip()) < len(text.strip()) * 0.8:
         raise RuntimeError(f"Dan tin vao Zalo bi thieu ({len(got)}/{len(text)} chu)")
+
+
+TARGET = {"name": ""}
+
+
+def assert_chat(page, step):
+    """CHOT CHAN: khung chat dang mo phai dung nhom can dang. Sai -> xoa khay / o soan roi DUNG (khong gui nham nhom khac).
+    23/10 tung thay bot nhay sang nhom 'Dau thau...' (800 nguoi) voi 1 anh nam cho trong o soan."""
+    import unicodedata
+    want = unicodedata.normalize("NFC", TARGET["name"]).strip()
+    if not want:
+        return
+    try:
+        got = unicodedata.normalize("NFC", page.locator(".header-title").first.inner_text().replace("\xa0", " ")).strip()
+    except Exception:
+        got = "?"
+    if got != want:
+        log(f"!!! SAI NHOM o buoc '{step}': dang mo '{got}', can '{want}' -> xoa nhap va dung")
+        try:
+            clear_tray(page)
+            box = page.locator(INPUT).first
+            if box.inner_text().strip():
+                box.click(); page.keyboard.press("Control+a"); page.keyboard.press("Delete")
+        except Exception:
+            pass
+        raise RuntimeError(f"Khung chat bi doi sang '{got}' o buoc {step} -> da dung, khong gui")
+
+
+def paste_image(page, path):
+    """Dan anh vao o soan (nhu Ctrl+V) -> anh nam o khay duoi o soan, chua gui."""
+    import base64
+    with open(path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode()
+    assert_chat(page, "dan anh")
+    page.locator(INPUT).first.click()
+    page.evaluate("""([sel, b64]) => { const el = document.querySelector(sel); el.focus();
+        const bin = atob(b64), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+        const dt = new DataTransfer(); dt.items.add(new File([arr], 'deal.jpg', {type: 'image/jpeg'}));
+        el.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }""", [INPUT, b64])
+    page.locator(".input-preview-item").first.wait_for(timeout=15000)
+    human_pause(1, 2)
+
+
+def add_caption(page, text):
+    """Bam vao anh o khay -> hop 'Nhap mo ta' -> dan chu thich -> Luu. Anh + chu thich thanh 1 tin (giong Telegram)."""
+    page.locator(".input-preview-item").first.click()
+    cap = page.locator("[data-placeholder*='mô tả'], [placeholder*='mô tả']").first
+    if not cap.count():
+        cap = page.locator(INPUT).locator("visible=true").last
+    cap.wait_for(timeout=10000)
+    cap.click()
+    human_pause(0.5, 1)
+    page.evaluate("""(text) => { const el = document.activeElement;
+        const dt = new DataTransfer(); dt.setData('text/plain', text);
+        el.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }""", text)
+    human_pause(1, 2)
+    got = page.evaluate("() => (document.activeElement.innerText || '').length")
+    if got < len(text.strip()) * 0.8:
+        raise RuntimeError(f"Dan chu thich anh bi thieu ({got}/{len(text)} chu)")
+    dlg_save = page.get_by_role("button", name="Lưu", exact=True)
+    (dlg_save if dlg_save.count() else page.get_by_text("Lưu", exact=True).locator("visible=true")).last.click()
+    human_pause(1, 2)
+    assert_chat(page, "sau khi luu chu thich")
+
+
+def clear_tray(page):
+    x = page.get_by_text("Xoá tất cả", exact=True)
+    if x.count():
+        x.first.click()
+        human_pause(0.5, 1)
+
+
+def press_send(page):
+    """Enter de gui roi KIEM TRA o soan da trong; con chu thi thu lai, van con thi bao loi (khong de tin dinh vao mon sau)."""
+    box = page.locator(INPUT).first
+    tray = page.locator(".input-preview-item")
+    for _ in range(3):
+        assert_chat(page, "truoc khi bam gui")
+        box.click()
+        assert_chat(page, "truoc khi bam gui")
+        page.keyboard.press("Enter")
+        human_pause(2, 3)
+        if not box.inner_text().replace("\xa0", " ").strip() and not tray.count():
+            return
+    raise RuntimeError("Bam Enter nhung tin / anh van nam trong o soan (Zalo khong gui)")
 
 
 def dang():
@@ -201,11 +288,17 @@ def dang():
                 alert("⚠️ Bot Zalo bị đăng xuất. Anh chạy dang_nhap_zalo.bat rồi quét mã QR bằng điện thoại cầm NICK PHỤ.")
                 sys.exit(1)
             open_group(page, nhom)
+            TARGET["name"] = nhom
             log(f"Da mo nhom '{nhom}'")
             if dry:                           # dien tin vao o soan de xem, chup man hinh, xoa di - KHONG gui
-                send_text(page, text if kieu == "gop" else caps[0])
+                if kieu == "gop" or not pics[0]:
+                    send_text(page, text if kieu == "gop" else caps[0])
+                else:                         # tung mon: dan anh + chu thich, chup hop mo ta truoc khi Luu
+                    paste_image(page, pics[0])
+                    add_caption(page, caps[0])
                 page.screenshot(path=os.path.join(OUT_DIR, "xem_thu.png"))
-                page.locator(INPUT).click()
+                clear_tray(page)
+                page.locator(INPUT).first.click()
                 page.keyboard.press("Control+a")
                 page.keyboard.press("Delete")
                 log("DRY_RUN: khong gui. Anh chup man hinh: xem_thu.png")
@@ -214,20 +307,24 @@ def dang():
                 if jpeg:
                     send_image(page, img_path)
                 send_text(page, text)
-                page.keyboard.press("Enter")
-                human_pause(3, 5)
+                press_send(page)
+                human_pause(2, 3)
                 save_done(state, items, n)
             else:
                 for i, (it, cap, pic) in enumerate(zip(items, caps, pics)):
                     if i:
                         human_pause(20, 40)   # nghi giua cac mon nhu nguoi gui tay
-                    if pic:
-                        send_image(page, pic)
-                    send_text(page, cap)
-                    page.keyboard.press("Enter")
-                    human_pause(3, 5)
+                    if pic:                   # anh + chu thich trong 1 tin (giong Telegram)
+                        paste_image(page, pic)
+                        add_caption(page, cap)
+                    else:
+                        send_text(page, cap)
+                    press_send(page)
+                    human_pause(2, 3)
                     save_done(state, [it], n)  # gui toi dau ghi toi do (loi giua chung khong gui lai mon da gui)
                     log(f"  da gui mon {i + 1}/{len(items)}")
+                    page.screenshot(path=os.path.join(OUT_DIR, f"sau_mon_{i + 1}.png"))   # de truy loi neu nhay nhom
+                    assert_chat(page, f"sau mon {i + 1}")
             page.screenshot(path=os.path.join(OUT_DIR, "da_gui.png"))
             log(f"DA DANG {len(items)} mon vao nhom '{nhom}' (kieu {kieu})")
         except Exception as e:
