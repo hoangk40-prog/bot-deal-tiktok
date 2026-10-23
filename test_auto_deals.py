@@ -230,8 +230,20 @@ A.time.sleep = real_sleep
 
 it = dict(A.tt_info(tt(1, 299000, sold=11780, orig=399000)), aff="https://shorten.asia/x")
 cap = A.caption(it)
-check("chu thich co gia, gia goc, da ban, shop, link", "299.000đ" in cap and "399.000đ" in cap and "11.780+" in cap
-      and "Shop1" in cap and "https://shorten.asia/x" in cap, cap)
+check("chu thich co gia, gia goc, da ban (lam tron xuong), shop, meo mua re, link", "299.000đ" in cap and "399.000đ" in cap
+      and "trên 10.000" in cap and "Shop1" in cap and "Mẹo mua rẻ nhất" in cap and "https://shorten.asia/x" in cap, cap)
+it2 = dict(A.tt_info(tt(2, 700000, sold=41953)), aff="https://shorten.asia/y")
+cap2 = A.caption(it2)
+check("khong co gia giam that -> ghi GIA NIEM YET + app re hon", "Giá niêm yết 700.000đ" in cap2 and "RẺ HƠN" in cap2, cap2)
+check("lam tron so da ban xuong", A.sold_text(41953) == "trên 40.000" and A.sold_text(226317) == "trên 200.000"
+      and A.sold_text(7003) == "trên 7.000" and A.sold_text(50) is None)
+fake = {"title": "Sạc dự phòng Bonne 20000mAh tặng túi", "shop": "Shop lạ"}
+check("loc cau AI bia (bao hanh / chinh hang / so khong co trong ten)",
+      A.claim_ok("Dung lượng 20000mAh", fake) and A.claim_ok("Tặng kèm túi đựng", fake)
+      and not A.claim_ok("Bảo hành 12 tháng", fake) and not A.claim_ok("Hàng chính hãng", fake)
+      and A.claim_ok("Hàng chính hãng", dict(fake, official=True)))
+check("nhan dien shop chinh hang", A.is_official({"title": "Sạc Bonne BP08", "shop": "BONNE VN"})
+      and A.is_official({"title": "Áo polo", "shop": "Polo Official Store"}) and not A.is_official({"title": "Áo polo", "shop": "Shop Mẹ Bin"}))
 check("nhan dang link TikTok chua phai link hoa hong", A.is_tiktok_raw("https://vt.tiktok.com/ZSabc/")
       and not A.is_tiktok_raw("https://shorten.asia/abc") and not A.is_tiktok_raw("https://go.isclix.com/deep_link/1?url=https%3A%2F%2Fwww.tiktok.com"))
 

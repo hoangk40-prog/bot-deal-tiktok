@@ -537,6 +537,29 @@ def tt_info(x):
             "stock": x.get("has_inventory", True) is not False, "cat": str((cats[0] if cats else {}).get("local_name") or "") or guess_group(x.get("title") or "")}
 
 
+OFFICIAL_WORDS = ("chinh hang", "official", "mall", "authentic", "flagship", "store chinh")
+
+
+def is_official(it):
+    """Hang/shop chinh hang: ten san pham hoac ten shop ghi ro chinh hang / Official / Mall, hoac shop mang dung ten thuong
+    hieu co trong ten san pham (vd shop 'BONNE VN' ban 'Sac du phong Bonne'). Chi dua tren chu co that, khong doan."""
+    t, s = fold(it.get("title", "")), fold(it.get("shop", ""))
+    if any(w in t or w in s for w in OFFICIAL_WORDS):
+        return True
+    brand = s.replace(" vietnam", "").replace(" viet nam", "").replace(" vn", "").strip()
+    return len(brand) >= 4 and re.search(r"\b" + re.escape(brand) + r"\b", t) is not None
+
+
+def sold_text(n):
+    """41.953 -> 'trên 40.000' ; 226.317 -> 'trên 200.000' ; 7.003 -> 'trên 7.000' ; <100 -> None (lam tron XUONG, khong noi qua)."""
+    n = int(n or 0)
+    if n < 100:
+        return None
+    d = len(str(n))
+    step = 10 ** (d - 1) if (n < 10000 or n >= 100000) else 10 ** (d - 2) * 10
+    return "trên " + f"{n // step * step:,}".replace(",", ".")
+
+
 def pick_tiktok(items, state, cfg, n):
     """Tra ve (danh_sach_info_xep_hang, thong_ke_ly_do_loai). Lay du phong gap doi (tao link co the loi)."""
     stats, cands, seen = Counter(), [], set()
@@ -560,7 +583,10 @@ def pick_tiktok(items, state, cfg, n):
         elif recent((state["products"].get("tt|" + it["id"]) or {}).get("t", ""), cfg["product_cooldown_days"] * 24, n):
             stats["da gui gan day"] += 1
         else:
-            score = math.log10(it["sold"] + 10) * math.sqrt(it["commission"])   # can: ban chay vs hoa hong (khong chi uu tien hang dat)
+            # 23/10 anh muon giup NGUOI MUA: uu tien ban chay + hang chinh hang / shop chinh hang, khong uu tien hang dat
+            # (truoc dung tien hoa hong -> hay chon mon gia cao). Hoa hong % van tinh nhe.
+            it["official"] = is_official(it)
+            score = math.log10(it["sold"] + 10) * math.sqrt(max(it["pct"], 1)) * (1.5 if it["official"] else 1)
             if it["orig"]:
                 score *= 1 + min(1 - it["price"] / it["orig"], 0.6)            # dang giam gia that: uu tien (giam 30% -> x1,3)
             cands.append((score, it))
@@ -634,7 +660,8 @@ def from_link_data(d, link):
 # ---------------------------------------------------------------- loi chao hang do AI viet (Gemini, mien phi)
 GEMINI_MODELS = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.7-flash", "gemini-flash-lite-latest"]   # 3.7 hay cham qua 90s
 HOOK_SCHEMA = {"type": "OBJECT", "properties": {"items": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
-    "so": {"type": "INTEGER"}, "mo_dau": {"type": "STRING"}}, "required": ["so", "mo_dau"]}}}, "required": ["items"]}
+    "so": {"type": "INTEGER"}, "mo_dau": {"type": "STRING"}, "noi_bat": {"type": "ARRAY", "items": {"type": "STRING"}}},
+    "required": ["so", "mo_dau", "noi_bat"]}}}, "required": ["items"]}
 
 
 def gemini_key():
@@ -662,16 +689,18 @@ def add_hooks(items, cfg):
     if not key:
         print("  [AI chao hang] chua co khoa Gemini -> gui tin nhu cu")
         return
-    facts = [{"so": i + 1, "ten": it["title"], "gia": round(it.get("price") or 0), "gia_den": round(it.get("price_max") or 0),
-              "da_ban": it.get("sold") or 0, "sao": round(it.get("rating") or 0, 1), "shop": it.get("shop", "")}
+    facts = [{"so": i + 1, "ten": it["title"], "shop": it.get("shop", ""), "chinh_hang": bool(it.get("official"))}
              for i, it in enumerate(items)]
-    prompt = ("Bạn là người bán hàng online Việt Nam viết lời chào deal cho nhóm Zalo / kênh Telegram, giọng thân mật, hào hứng "
-              "như đang reo lên với bạn bè (\"Trời ơi cả nhà ơi\", \"ce ơi\", \"khẩn cầu\", \"đừng bỏ qua\"), có 1-2 emoji, mỗi "
-              "món một kiểu mở đầu khác nhau. Mỗi sản phẩm viết 1 đoạn MỞ ĐẦU 2-3 câu ngắn (tối đa 220 ký tự), gây tò mò, nói lợi "
-              "ích thật của sản phẩm theo tên.\nLUẬT BẮT BUỘC: CHỈ dùng con số có trong dữ liệu (giá, số người đã mua, số sao) "
-              "hoặc trong tên sản phẩm; KHÔNG tự tính, KHÔNG bịa giá gốc, % giảm, quà tặng, voucher, freeship, hạn chót, số lượng "
-              "còn lại. gia_den > 0 thì nói \"chỉ từ <gia>đ\". Viết số tiền dạng 359.280đ. Không viết link, không nhắc Shopee.\n"
-              "Trả JSON {\"items\": [{\"so\": 1, \"mo_dau\": \"...\"}]}\nDỮ LIỆU: " + json.dumps(facts, ensure_ascii=False))
+    prompt = ("Bạn là người bán hàng online Việt Nam tận tâm, giúp NGƯỜI MUA chọn được hàng tốt giá rẻ. Với mỗi sản phẩm viết:\n"
+              "1) mo_dau: 2 câu chào deal thân mật, hào hứng (\"Trời ơi cả nhà ơi\", \"ce ơi\", \"khẩn cầu\", \"đừng bỏ qua\"), 1-2 "
+              "emoji, mỗi món một kiểu khác nhau; nói lợi ích thật cho người dùng; kết bằng ý mời bấm link xem giá sale trong app. "
+              "KHÔNG nhắc giá tiền, KHÔNG nhắc số người mua.\n"
+              "2) noi_bat: 4-6 điểm nổi bật NGẮN (3-10 chữ mỗi điểm) giúp người mua thấy chất lượng: chất liệu, công dụng, kích cỡ, "
+              "dung lượng, đối tượng dùng, quà kèm... Nếu chinh_hang = true được viết 1 điểm về hàng chính hãng của shop.\n"
+              "LUẬT BẮT BUỘC: CHỈ dùng thông tin CÓ TRONG TÊN sản phẩm / tên shop. KHÔNG bịa đánh giá, số sao, bảo hành, xuất xứ, "
+              "nhập khẩu, cam kết, hoàn tiền, % giảm, freeship, quà không có trong tên. Không viết link, không nhắc Shopee.\n"
+              "Trả JSON {\"items\": [{\"so\": 1, \"mo_dau\": \"...\", \"noi_bat\": [\"...\"]}]}\nDỮ LIỆU: "
+              + json.dumps(facts, ensure_ascii=False))
     body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {
         "temperature": 0.9, "responseMimeType": "application/json", "responseSchema": HOOK_SCHEMA}}).encode()
     for model in GEMINI_MODELS:
@@ -687,44 +716,62 @@ def add_hooks(items, cfg):
         ok = 0
         for x in out:
             i = int(x.get("so", 0)) - 1
+            if not (0 <= i < len(items)):
+                continue
+            it = items[i]
             hook = str(x.get("mo_dau") or "").strip()
-            if not (0 <= i < len(items)) or not hook:
-                continue
-            it, f_ = items[i], facts[i]
-            allowed = _nums(f"{f_['gia']} {f_['gia_den']} {f_['da_ban']} {f_['sao']} {it['title']} {vnd(f_['gia'])} "
-                            f"{vnd(f_['gia_den'] or 0)} {f_['da_ban']:,}".replace(",", "."))
-            bad = _nums(hook) - allowed
-            if bad:
-                print(f"  [AI chao hang] mon {i + 1} co so la {sorted(bad)} -> bo")
-                continue
-            it["hook"] = hook[:300]
-            ok += 1
+            if hook and claim_ok(hook, it):
+                it["hook"] = hook[:300]
+                ok += 1
+            it["noi_bat"] = [p.strip(" •-") for p in (x.get("noi_bat") or []) if p.strip() and claim_ok(p, it)][:6]
         print(f"  [AI chao hang] {model}: viet duoc {ok}/{len(items)} mon")
         return
 
 
+RISKY = ("bao hanh", "chinh hang", "uy tin", "xuat xu", "nhap khau", "cam ket", "hoan tien", "doi tra", "freeship", "mien phi van",
+         "giam gia", "%", "5 sao", "danh gia", "review", "tot nhat", "re nhat", "so 1", "top 1")
+
+
+def claim_ok(text, it):
+    """Cau AI viet co hop le khong: so trong cau phai co trong ten san pham; tu ngu 'cam ket' (bao hanh, chinh hang, uy tin,
+    giam gia, danh gia...) chi duoc dung khi ten san pham / shop CO chu do (chinh hang: khi bot da xac nhan it['official'])."""
+    t = fold(it.get("title", "") + " " + it.get("shop", ""))
+    if _nums(text) - _nums(it.get("title", "")):
+        return False
+    f = fold(text)
+    for w in RISKY:
+        if w in f and w not in t and not (w in ("chinh hang", "uy tin") and it.get("official")):
+            return False
+    return True
+
+
 def caption(it):
-    """Chu thich 1 san pham, dan thang vao nhom Zalo duoc. Co it['hook'] (AI viet) thi dat len dau."""
+    """Chu thich 1 san pham (Telegram / Zalo / Trang FB). 23/10 theo y anh, giup NGUOI MUA: loi chao AI, 'da ban tren X',
+    hang chinh hang (chi khi co that), diem noi bat (AI, da loc bia), GIA NIEM YET (Accesstrade chi co gia nay; trong app
+    co khuyen mai nen re hon) + meo mua re nhat."""
     title = it["title"] if len(it["title"]) <= 120 else it["title"][:117].rstrip() + "..."
     sold = it.get("sold") or 0
-    head = "⚡ DEAL HOT TIKTOK SHOP" if sold < 10000 else "⚡ SIÊU HOT TIKTOK SHOP – HÀNG BÁN CHẠY"
-    lines = ([it["hook"], ""] if it.get("hook") else []) + [head, f"🔥 {title}" if title else "🔥 Deal hot hôm nay", ""]
+    lines = ([it["hook"], ""] if it.get("hook") else []) + [f"🔥 {title}" if title else "🔥 Deal hot hôm nay", ""]
+    st = sold_text(sold)
+    if st:
+        lines.append(f"🏆 Hàng bán chạy – đã bán {st} sản phẩm" if sold >= 10000 else f"🛒 Đã bán {st} sản phẩm")
+    if it.get("official"):
+        lines.append(f"✅ Hàng chính hãng – shop {it['shop']}" if it.get("shop") else "✅ Hàng chính hãng")
+    elif it.get("shop"):
+        lines.append(f"🏪 Shop: {it['shop']}")
+    if it.get("noi_bat"):
+        lines.append("✨ Điểm nổi bật:")
+        lines += [f"   • {p}" for p in it["noi_bat"]]
     if it.get("price"):
         if it.get("orig"):         # chi khi API tra gia goc that su cao hon
             save = it["orig"] - it["price"]
             lines += [f"❌ Giá gốc: {vnd(it['orig'])}",
                       f"✅ GIÁ SALE: {vnd(it['price'])}  (-{round(save / it['orig'] * 100)}%, tiết kiệm {vnd(save)})"]
-        elif it.get("price_max"):
-            lines.append(f"💰 Giá CHỈ TỪ {vnd(it['price'])} (tuỳ phân loại, đến {vnd(it['price_max'])})")
         else:
-            lines.append(f"💰 Giá: {vnd(it['price'])}")
-    if sold:
-        lines.append(f"🛒 Đã có {sold:,}+ người mua".replace(",", "."))
-    if it.get("rating") and it["rating"] >= 4:
-        lines.append(f"⭐ Đánh giá {it['rating']:.1f}/5".replace(".", ","))
-    if it.get("shop"):
-        lines.append(f"🏪 Shop: {it['shop']}")
-    lines += ["🎟 Bấm link xem thêm voucher & giá mới nhất trong app", f"👉 MUA NGAY: {it['aff']}"]
+            gia = ("từ " if it.get("price_max") else "") + vnd(it["price"])
+            lines.append(f"💰 Giá niêm yết {gia} – trong app đang có khuyến mãi, giá thực tế RẺ HƠN")
+    lines += ["💡 Mẹo mua rẻ nhất: bấm “Lưu” voucher của shop + voucher TikTok, chọn mã freeship rồi mới thanh toán",
+              f"👉 BẤM XEM GIÁ SALE: {it['aff']}"]
     return "\n".join(lines)
 
 
@@ -814,7 +861,11 @@ def send_product(bot, chat, it):
     cap = caption(it)
     if it.get("image"):
         try:
-            tg_post(bot, chat, "", method="sendPhoto", extra={"photo": it["image"], "caption": cap[:1024]})
+            if len(cap) <= 1024:
+                tg_post(bot, chat, "", method="sendPhoto", extra={"photo": it["image"], "caption": cap})
+            else:                                      # Telegram gioi han chu thich anh 1024 ky tu -> anh rieng, tin chu ngay sau
+                tg_post(bot, chat, "", method="sendPhoto", extra={"photo": it["image"]})
+                tg_post(bot, chat, cap)
             return
         except Exception as e:
             print("  Gui anh loi, gui chu thay the:", e)
