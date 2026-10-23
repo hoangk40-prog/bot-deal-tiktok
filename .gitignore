@@ -12,3 +12,5 @@ desktop.ini
 # ban cu nam ngoai thu muc .github (ban dung: .github/workflows/deals.yml)
 /deals.yml
 *.bak
+# bot Zalo nick phu: chi chay tren may
+zalo_da_dang.json
