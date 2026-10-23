@@ -234,7 +234,10 @@ check("chu thich co gia, gia goc, da ban (lam tron xuong), shop, meo mua re, lin
       and "trên 10.000" in cap and "Shop1" in cap and "Mẹo mua rẻ nhất" in cap and "https://shorten.asia/x" in cap, cap)
 it2 = dict(A.tt_info(tt(2, 700000, sold=41953)), aff="https://shorten.asia/y")
 cap2 = A.caption(it2)
-check("khong co gia giam that -> ghi GIA NIEM YET + app re hon", "Giá niêm yết 700.000đ" in cap2 and "RẺ HƠN" in cap2, cap2)
+check("khong co gia giam that -> ghi 'gia chi duoi X' (lam tron len) + link re hon",
+      "Giá chỉ dưới 710k" in cap2 and "bấm link đang sale còn rẻ hơn" in cap2 and "niêm yết" not in cap2, cap2)
+check("lam tron gia len", A.gia_tron(62779) == "65k" and A.gia_tron(135000) == "140k" and A.gia_tron(294999) == "300k"
+      and A.gia_tron(95000) == "100k" and A.gia_tron(1020000) == "1,1 triệu")
 check("lam tron so da ban xuong", A.sold_text(41953) == "trên 40.000" and A.sold_text(226317) == "trên 200.000"
       and A.sold_text(7003) == "trên 7.000" and A.sold_text(50) is None)
 fake = {"title": "Sạc dự phòng Bonne 20000mAh tặng túi", "shop": "Shop lạ"}

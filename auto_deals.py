@@ -767,9 +767,9 @@ def caption(it):
             save = it["orig"] - it["price"]
             lines += [f"❌ Giá gốc: {vnd(it['orig'])}",
                       f"✅ GIÁ SALE: {vnd(it['price'])}  (-{round(save / it['orig'] * 100)}%, tiết kiệm {vnd(save)})"]
-        else:
-            gia = ("từ " if it.get("price_max") else "") + vnd(it["price"])
-            lines.append(f"💰 Giá niêm yết {gia} – trong app đang có khuyến mãi, giá thực tế RẺ HƠN")
+        else:                      # 23/10 anh duyet: khong ghi dung gia niem yet (nhin dat), ghi "duoi X" lam tron LEN -> luon dung
+            gia = ("từ " if it.get("price_max") else "") + "dưới " + gia_tron(it["price"])
+            lines.append(f"💰 Giá chỉ {gia} – bấm link đang sale còn rẻ hơn")
     lines += ["💡 Mẹo mua rẻ nhất: bấm “Lưu” voucher của shop + voucher TikTok, chọn mã freeship rồi mới thanh toán",
               f"👉 BẤM XEM GIÁ SALE: {it['aff']}"]
     return "\n".join(lines)
@@ -777,6 +777,14 @@ def caption(it):
 
 def vnd(x):
     return f"{int(round(x)):,}".replace(",", ".") + "đ"
+
+
+def gia_tron(x):
+    """Lam tron LEN (cao hon gia that) de ghi 'duoi ...': 62.779 -> '65k' ; 135.000 -> '140k' ; 294.999 -> '300k' ; 1.020.000 -> '1,1 triệu'."""
+    x = int(x)
+    step = 5000 if x < 100000 else 10000 if x < 1000000 else 100000
+    v = (x // step + 1) * step
+    return f"{v // 1000}k" if v < 1000000 else f"{v / 1000000:g}".replace(".", ",") + " triệu"
 
 
 def send_due(cfg, meta, n, force):
