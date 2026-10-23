@@ -13,6 +13,7 @@ LOG = os.path.join(OUT_DIR, "nhat_ky_zalo.txt")
 TASK = "Bot Zalo dang deal"
 PY = sys.executable.replace("pythonw.exe", "python.exe")
 NOWIN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+KIEU_LABEL = {"tung_mon": "Từng món (mỗi món 1 ảnh + 1 tin, nghỉ 20–40 giây)", "gop": "Gộp (1 ảnh ghép + 1 tin)"}
 
 
 def read_json(path):
@@ -45,7 +46,8 @@ class App(tk.Tk):
         cfg, local = read_json(CFG_PATH), read_json(LOCAL_PATH)
         self.v_nhom = tk.StringVar(value=str(local.get("zalo_nhom", "")))
         self.v_gio = tk.StringVar(value=", ".join(str(h) for h in cfg.get("zalo_hours", [9, 12, 17, 20])))
-        self.v_items = tk.StringVar(value=str(cfg.get("zalo_items", 4)))
+        self.v_items = tk.StringVar(value=str(cfg.get("zalo_items", 3)))
+        self.v_kieu = tk.StringVar(value=KIEU_LABEL.get(cfg.get("zalo_kieu", "tung_mon"), KIEU_LABEL["tung_mon"]))
         self.v_login = tk.StringVar(value="Chưa kiểm tra (bấm 'Kiểm tra')")
         self.v_lich = tk.StringVar(value="đang xem...")
         self.v_status = tk.StringVar(value="Sẵn sàng.")
@@ -79,8 +81,11 @@ class App(tk.Tk):
         ttk.Label(st, text="Số món mỗi lần:").grid(row=2, column=0, sticky="w", padx=6, pady=3)
         ttk.Entry(st, textvariable=self.v_items, width=6).grid(row=2, column=1, sticky="w")
         ttk.Button(st, text="💾 Lưu cài đặt", command=self.save).grid(row=2, column=2, sticky="w", padx=4)
-        ttk.Label(st, foreground="#666", text="Chống khoá nick: chỉ 1 nhóm của anh, 3–4 lần/ngày, bot tự lệch giờ 0–8 phút. "
-                  "Đổi giờ xong bấm 'Bật lịch' lại để áp dụng.").grid(row=3, column=0, columnspan=4, sticky="w", padx=6, pady=(2, 4))
+        ttk.Label(st, text="Kiểu gửi:").grid(row=3, column=0, sticky="w", padx=6, pady=3)
+        ttk.Combobox(st, textvariable=self.v_kieu, values=list(KIEU_LABEL.values()), state="readonly",
+                     width=48).grid(row=3, column=1, columnspan=2, sticky="w")
+        ttk.Label(st, foreground="#666", text="Chống khoá nick: chỉ 1 nhóm của anh, 3–4 lần/ngày, bot tự lệch giờ 0–8 phút; kiểu 'Từng món' "
+                  "nên để 3 món/lần. Đổi giờ xong bấm 'Bật lịch' lại để áp dụng.").grid(row=4, column=0, columnspan=4, sticky="w", padx=6, pady=(2, 4))
 
         bar = ttk.Frame(self)
         bar.pack(fill="x", padx=8)
@@ -94,7 +99,7 @@ class App(tk.Tk):
 
         body = ttk.Panedwindow(self, orient="horizontal")
         body.pack(fill="both", expand=True, padx=8, pady=(0, 8))
-        left = ttk.LabelFrame(body, text="Lần đăng gần nhất (ảnh ghép + tin gộp)")
+        left = ttk.LabelFrame(body, text="Lần đăng gần nhất (ảnh ghép các món + nội dung tin)")
         right = ttk.LabelFrame(body, text="Nhật ký")
         body.add(left, weight=1)
         body.add(right, weight=1)
@@ -170,7 +175,8 @@ class App(tk.Tk):
             messagebox.showwarning("Sai cài đặt", "Giờ đăng: các số từ 6 đến 22, ví dụ 9, 12, 17, 20.\nSố món: từ 1 đến 8.")
             return False
         cfg = read_json(CFG_PATH)
-        cfg.update(zalo_hours=hs, zalo_items=n)
+        kieu = next((k for k, v in KIEU_LABEL.items() if v == self.v_kieu.get()), "tung_mon")
+        cfg.update(zalo_hours=hs, zalo_items=n, zalo_kieu=kieu)
         write_json(CFG_PATH, cfg)
         local = read_json(LOCAL_PATH)                 # giu nguyen token / ma Telegram / Facebook
         local["zalo_nhom"] = self.v_nhom.get().strip()

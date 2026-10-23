@@ -140,7 +140,11 @@ def send_text(page, text):
         const dt = new DataTransfer(); dt.setData('text/plain', text);
         el.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true, cancelable: true})); }""",
                   [INPUT, text])
-    human_pause(1.5, 2.5)
+    human_pause(3, 4)                         # cho Zalo dung khung xem truoc link roi tat (chi la logo TikTok Shop chung)
+    close = page.locator("#linkPreview .preview-close")
+    if close.count():
+        close.first.click()
+        human_pause(0.4, 0.8)
     got = box.inner_text().replace("\xa0", " ")
     if len(got.strip()) < len(text.strip()) * 0.8:
         raise RuntimeError(f"Dan tin vao Zalo bi thieu ({len(got)}/{len(text)} chu)")
@@ -162,15 +166,30 @@ def dang():
         log("Khong co deal moi -> bo qua lan nay.")
         return
     os.makedirs(OUT_DIR, exist_ok=True)
-    jpeg = ad.make_collage(items)
+    kieu = str(ad.load_config().get("zalo_kieu", "tung_mon"))
+    jpeg = ad.make_collage(items)                 # kieu tung_mon van lam anh ghep de cua so Bot Zalo xem lai
     img_path = os.path.join(OUT_DIR, "anh_ghep.jpg")
     if jpeg:
         with open(img_path, "wb") as f:
             f.write(jpeg)
-    text = ad.combo_text(items)
+    if kieu == "gop":
+        text = ad.combo_text(items)
+    else:                                         # moi mon 1 anh + 1 tin chu (giong Telegram)
+        caps = [ad.caption(it) for it in items]
+        text = "\n\n――――――――\n\n".join(caps)
+        pics = []
+        for i, it in enumerate(items):
+            p_ = os.path.join(OUT_DIR, f"mon_{i + 1}.jpg")
+            try:
+                with open(p_, "wb") as f:
+                    f.write(ad.fb_image_bytes(it["image"]))
+                pics.append(p_)
+            except Exception as e:
+                log(f"  tai anh mon {i + 1} loi ({str(e)[:60]}) -> chi gui chu")
+                pics.append(None)
     with open(os.path.join(OUT_DIR, "tin_gop.txt"), "w", encoding="utf-8") as f:
         f.write(text)
-    log(f"Da tao anh ghep + tin gop ({len(text)} chu) o {OUT_DIR}")
+    log(f"Da tao noi dung kieu '{kieu}' ({len(items)} mon) o {OUT_DIR}")
 
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
@@ -184,21 +203,33 @@ def dang():
             open_group(page, nhom)
             log(f"Da mo nhom '{nhom}'")
             if dry:                           # dien tin vao o soan de xem, chup man hinh, xoa di - KHONG gui
-                send_text(page, text)
+                send_text(page, text if kieu == "gop" else caps[0])
                 page.screenshot(path=os.path.join(OUT_DIR, "xem_thu.png"))
                 page.locator(INPUT).click()
                 page.keyboard.press("Control+a")
                 page.keyboard.press("Delete")
                 log("DRY_RUN: khong gui. Anh chup man hinh: xem_thu.png")
                 return
-            if jpeg:
-                send_image(page, img_path)
-            send_text(page, text)
-            page.keyboard.press("Enter")
-            human_pause(3, 5)
+            if kieu == "gop":
+                if jpeg:
+                    send_image(page, img_path)
+                send_text(page, text)
+                page.keyboard.press("Enter")
+                human_pause(3, 5)
+                save_done(state, items, n)
+            else:
+                for i, (it, cap, pic) in enumerate(zip(items, caps, pics)):
+                    if i:
+                        human_pause(20, 40)   # nghi giua cac mon nhu nguoi gui tay
+                    if pic:
+                        send_image(page, pic)
+                    send_text(page, cap)
+                    page.keyboard.press("Enter")
+                    human_pause(3, 5)
+                    save_done(state, [it], n)  # gui toi dau ghi toi do (loi giua chung khong gui lai mon da gui)
+                    log(f"  da gui mon {i + 1}/{len(items)}")
             page.screenshot(path=os.path.join(OUT_DIR, "da_gui.png"))
-            save_done(state, items, n)
-            log(f"DA DANG {len(items)} mon vao nhom '{nhom}'")
+            log(f"DA DANG {len(items)} mon vao nhom '{nhom}' (kieu {kieu})")
         except Exception as e:
             log("LOI:", e)
             try:
