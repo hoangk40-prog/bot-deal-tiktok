@@ -581,9 +581,10 @@ def pick_tiktok(items, state, cfg, n):
     return out, stats
 
 
-def make_link(token, product_url, product_id="", full=False):
-    """Tao link hoa hong rut gon. Tra ve data cua API (co aff_short_url; full=True co them ten/anh/gia), None neu loi."""
-    body = {"product_url": product_url, "utm_source": "zalo"}
+def make_link(token, product_url, product_id="", full=False, utm="zalo"):
+    """Tao link hoa hong rut gon. Tra ve data cua API (co aff_short_url; full=True co them ten/anh/gia), None neu loi.
+    utm: nguon de xem don tu dau tren Accesstrade (tool Live AI dung "youtube_live")."""
+    body = {"product_url": product_url, "utm_source": utm}
     if product_id:
         body["product_id"] = product_id
     url = f"{TIKTOK_API}/create_link" + ("" if full else "?minify=true")
