@@ -1,0 +1,26 @@
+name: Link video TikTok (cho Metricool)
+
+on:
+  workflow_dispatch:
+    inputs:
+      lenh:
+        description: "mo / dong / ds"
+        default: ds
+      file:
+        description: "Ten file, cach nhau dau cach (vd: 1.mp4 2.mp4)"
+        default: ""
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet requests google-auth
+      - name: Link TikTok
+        env:
+          GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+        run: python link_tiktok.py ${{ inputs.lenh }} ${{ inputs.file }}
