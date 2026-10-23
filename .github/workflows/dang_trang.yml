@@ -2,8 +2,11 @@ name: Dang video anh Trang Facebook
 
 on:
   # Make 8074072 da TAT 22/10 -> bot nay dang thay. Dung bat lai Make (dang trung).
+  # 23/10 anh duyet tang giai tri: 3 video (12h, 16h, 20h) + 2 anh (9h, 17h) moi ngay
   schedule:
+    - cron: "0 2 * * *"            # 9h gio VN: anh
     - cron: "0 5 * * *"            # 12h gio VN: video
+    - cron: "0 9 * * *"            # 16h gio VN: video
     - cron: "0 10 * * *"           # 17h gio VN: anh
     - cron: "0 13 * * *"           # 20h gio VN: video
   workflow_dispatch:
@@ -46,7 +49,7 @@ jobs:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          KIEU: ${{ github.event_name == 'workflow_dispatch' && inputs.kieu || (github.event.schedule == '0 10 * * *' && 'anh' || 'video') }}
+          KIEU: ${{ github.event_name == 'workflow_dispatch' && inputs.kieu || ((github.event.schedule == '0 2 * * *' || github.event.schedule == '0 10 * * *') && 'anh' || 'video') }}
           AN: ${{ inputs.an && '1' || '' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
         run: python dang_trang.py
