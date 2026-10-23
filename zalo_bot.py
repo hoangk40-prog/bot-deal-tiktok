@@ -225,6 +225,16 @@ def dang_nhap():
         ctx.close()
 
 
+def kiem_tra():
+    """In DA_DANG_NHAP / CHUA_DANG_NHAP (cua so Bot Zalo dung de hien trang thai)."""
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        ctx = browser(p)
+        ok = open_zalo(ctx) is not None
+        ctx.close()
+    print("DA_DANG_NHAP" if ok else "CHUA_DANG_NHAP")
+
+
 def xem():
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
@@ -237,4 +247,4 @@ def xem():
 
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else ""
-    {"dang_nhap": dang_nhap, "dang": dang, "xem": xem}.get(cmd, lambda: sys.exit(__doc__))()
+    {"dang_nhap": dang_nhap, "dang": dang, "xem": xem, "kiem_tra": kiem_tra}.get(cmd, lambda: sys.exit(__doc__))()

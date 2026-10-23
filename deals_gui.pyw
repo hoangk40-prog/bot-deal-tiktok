@@ -233,6 +233,8 @@ class App(tk.Tk):
         self.v_nganh = tk.StringVar(value=str(self.cfg.get("nganh_win", "gia_dung")))
         ttk.Combobox(bar0, textvariable=self.v_nganh, width=12,
                      values=list(AD.WIN_KEYWORDS) if AD is not None else ["gia_dung"]).pack(side="left")
+        ttk.Button(bar0, text="📲 Bot Zalo", command=lambda: subprocess.Popen(
+            [sys.executable, os.path.join(HERE, "zalo_gui.pyw")], cwd=HERE)).pack(side="right", padx=3)
 
         bar = ttk.Frame(f); bar.pack(fill="x", padx=8)
         self.b_off = ttk.Button(bar, text="🎁 Lấy khuyến mãi / mã giảm giá", command=self.on_offers); self.b_off.pack(side="left", padx=3)
