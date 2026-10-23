@@ -1,7 +1,24 @@
 {
   "shopee": false,
   "tiktok": true,
-  "send_hours": [7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
+  "send_hours": [
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+  ],
   "max_products": 2,
   "max_vouchers": 2,
   "max_price": 1000000,
@@ -10,7 +27,20 @@
   "shop_cooldown_hours": 24,
   "active_from": 7,
   "active_to": 23,
-  "tiktok_keywords": ["áo", "váy", "giày", "túi xách", "son", "kem chống nắng", "serum", "sạc dự phòng", "tai nghe", "đồ gia dụng", "nồi chiên", "đồ chơi trẻ em"],
+  "tiktok_keywords": [
+    "áo",
+    "váy",
+    "giày",
+    "túi xách",
+    "son",
+    "kem chống nắng",
+    "serum",
+    "sạc dự phòng",
+    "tai nghe",
+    "đồ gia dụng",
+    "nồi chiên",
+    "đồ chơi trẻ em"
+  ],
   "min_price": 30000,
   "min_sold": 100,
   "min_commission": 3,
@@ -20,5 +50,13 @@
   "zalo_combo": false,
   "zalo_kieu": "tung_mon",
   "zalo_items": 3,
-  "nganh_win": "gia_dung"
+  "nganh_win": "gia_dung",
+  "zalo_hours": [
+    8,
+    10,
+    12,
+    15,
+    18,
+    20
+  ]
 }
