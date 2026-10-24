@@ -264,18 +264,20 @@ def dang():
         text = ad.combo_text(items)
     else:                                         # moi mon 1 anh + 1 tin chu (giong Telegram)
         ad.add_hooks(items, ad.load_config())     # AI viet loi chao hang (loi thi gui nhu cu)
-        caps = [ad.caption(it) for it in items]
-        text = "\n\n――――――――\n\n".join(caps)
-        pics = []
+        the = ad.load_config().get("zalo_the", True)   # 24/10 anh chon: THE ANH kieu B (make_card) + chu gon (card_caption)
+        caps, pics = [], []
         for i, it in enumerate(items):
             p_ = os.path.join(OUT_DIR, f"mon_{i + 1}.jpg")
+            card = ad.make_card(it) if the else None
             try:
                 with open(p_, "wb") as f:
-                    f.write(ad.fb_image_bytes(it["image"]))
+                    f.write(card or ad.fb_image_bytes(it["image"]))
                 pics.append(p_)
             except Exception as e:
                 log(f"  tai anh mon {i + 1} loi ({str(e)[:60]}) -> chi gui chu")
                 pics.append(None)
+            caps.append(ad.card_caption(it) if card else ad.caption(it))   # the loi -> tin day du nhu cu
+        text = "\n\n――――――――\n\n".join(caps)
     with open(os.path.join(OUT_DIR, "tin_gop.txt"), "w", encoding="utf-8") as f:
         f.write(text)
     log(f"Da tao noi dung kieu '{kieu}' ({len(items)} mon) o {OUT_DIR}")

@@ -756,16 +756,7 @@ def caption(it):
     title = it["title"] if len(it["title"]) <= 120 else it["title"][:117].rstrip() + "..."
     sold = it.get("sold") or 0
     lines = ([it["hook"], ""] if it.get("hook") else []) + [f"🔥 {title}" if title else "🔥 Deal hot hôm nay", ""]
-    st = sold_text(sold)
-    if st:
-        lines.append(f"🏆 Hàng bán chạy – đã bán {st} sản phẩm" if sold >= 10000 else f"🛒 Đã bán {st} sản phẩm")
-    if it.get("official"):
-        lines.append(f"✅ Hàng chính hãng – shop {it['shop']}" if it.get("shop") else "✅ Hàng chính hãng")
-    elif it.get("shop"):
-        lines.append(f"🏪 Shop: {it['shop']}")
-    if it.get("noi_bat"):
-        lines.append("✨ Điểm nổi bật:")
-        lines += [f"   • {p}" for p in it["noi_bat"]]
+    # 24/10 anh duyet: GIA len ngay duoi ten, 'hang ban chay' xuong cho gia cu (sau diem noi bat)
     if it.get("price"):
         if it.get("orig"):         # chi khi API tra gia goc that su cao hon
             save = it["orig"] - it["price"]
@@ -774,6 +765,16 @@ def caption(it):
         else:                      # 23/10 anh duyet: khong ghi dung gia niem yet (nhin dat), ghi "duoi X" lam tron LEN -> luon dung
             gia = ("từ " if it.get("price_max") else "") + "dưới " + gia_tron(it["price"])
             lines.append(f"💰 Giá chỉ {gia} – bấm link đang sale còn rẻ hơn")
+    if it.get("official"):
+        lines.append(f"✅ Hàng chính hãng – shop {it['shop']}" if it.get("shop") else "✅ Hàng chính hãng")
+    elif it.get("shop"):
+        lines.append(f"🏪 Shop: {it['shop']}")
+    if it.get("noi_bat"):
+        lines.append("✨ Điểm nổi bật:")
+        lines += [f"   • {p}" for p in it["noi_bat"]]
+    st = sold_text(sold)
+    if st:
+        lines.append(f"🏆 Hàng bán chạy – đã bán {st} sản phẩm" if sold >= 10000 else f"🛒 Đã bán {st} sản phẩm")
     lines += ["💡 Mẹo mua rẻ nhất: bấm “Lưu” voucher của shop + voucher TikTok, chọn mã freeship rồi mới thanh toán",
               f"👉 BẤM XEM GIÁ SALE: {it['aff']}"]
     return "\n".join(lines)
@@ -953,6 +954,155 @@ def make_collage(items):
     out = BytesIO()
     img.save(out, "JPEG", quality=88)
     return out.getvalue()
+
+
+def _pil_font(bold, size):
+    from PIL import ImageFont
+    for name in (("arialbd.ttf", "DejaVuSans-Bold.ttf") if bold else ("arial.ttf", "DejaVuSans.ttf")):
+        for p in (os.path.join(FONT_DIR, name), name):
+            try:
+                return ImageFont.truetype(p, size)
+            except OSError:
+                pass
+    return ImageFont.load_default()
+
+
+def _wrap(d, text, font, width, max_lines):
+    """Ngat dong theo do rong pixel; qua max_lines thi cat va them '…'."""
+    words, lines, cur = text.split(), [], ""
+    for w in words:
+        t = (cur + " " + w).strip()
+        if d.textlength(t, font=font) <= width:
+            cur = t
+        else:
+            lines.append(cur)
+            cur = w
+    lines.append(cur)
+    lines = [ln for ln in lines if ln]
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        while lines[-1] and d.textlength(lines[-1] + "…", font=font) > width:
+            lines[-1] = lines[-1].rsplit(" ", 1)[0] if " " in lines[-1] else lines[-1][:-1]
+        lines[-1] += "…"
+    return lines
+
+
+def short_title(title, n=70):
+    """Ten gon: bo phan quang cao trong ngoac [..] (..), cat ~n chu."""
+    t = re.sub(r"[\[【{(（].*?[\]】})）]", " ", title)
+    t = " ".join(t.split()) or title
+    return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + "…"
+
+
+def _short_hook(it, n=90):
+    """1 cau dau cua loi chao AI, toi da ~n chu."""
+    hook = (it.get("hook") or "").strip()
+    if hook:
+        hook = re.split(r"(?<=[.!?…])\s+", hook)[0]
+        if len(hook) > n:
+            hook = hook[:n].rsplit(" ", 1)[0].rstrip(",;:") + "…"
+    return hook
+
+
+def make_card(it, band=False):
+    """24/10 kieu B cho Zalo (anh duyet): THE ANH NGANG 1200x560 - nen la chinh anh san pham phong to lam mo + toi,
+    trai: anh san pham ro net, phai: ten gon, GIA, chinh hang / da ban, 2-3 diem noi bat. Tra bytes JPEG, None neu loi.
+    Chu trong anh KHONG chep duoc -> link van nam o tin chu ben duoi anh (bam duoc)."""
+    try:
+        from io import BytesIO
+        from PIL import Image, ImageDraw, ImageFilter, ImageOps
+        req = urllib.request.Request(it["image"], headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            prod = Image.open(BytesIO(r.read())).convert("RGB")
+    except Exception as e:
+        print("  Lam the anh loi:", str(e)[:80])
+        return None
+    W, H, PAD = 1200, 560, 36
+    bg = ImageOps.fit(prod, (W, H)).filter(ImageFilter.GaussianBlur(26))
+    shade = Image.new("L", (W, H))
+    shade.putdata([int(150 + 70 * x / W) for _ in range(H) for x in range(W)])     # trai toi vua, phai toi dam (chu de doc)
+    bg = Image.composite(Image.new("RGB", (W, H), (12, 12, 20)), bg, shade)
+    S = H - 2 * PAD                                    # anh san pham vuong ben trai, vien trang bo goc
+    pic = ImageOps.pad(prod, (S, S), color="white")
+    mask = Image.new("L", (S, S), 0)
+    ImageDraw.Draw(mask).rounded_rectangle([0, 0, S - 1, S - 1], 26, fill=255)
+    shadow = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(shadow).rounded_rectangle([PAD + 8, PAD + 12, PAD + S + 8, PAD + S + 12], 28, fill=170)
+    bg = Image.composite(Image.new("RGB", (W, H), "black"), bg, shadow.filter(ImageFilter.GaussianBlur(14)))
+    bg.paste(pic, (PAD, PAD), mask)
+    d = ImageDraw.Draw(bg)
+    x0, tw = PAD + S + 40, W - (PAD + S + 40) - PAD
+    y = PAD + 2
+    f_tag, f_title, f_price, f_sub, f_pt = _pil_font(True, 24), _pil_font(True, 38), _pil_font(True, 66), \
+        _pil_font(False, 25), _pil_font(False, 27)
+    tag = "DEAL HOT TIKTOK SHOP"
+    d.rounded_rectangle([x0, y, x0 + d.textlength(tag, font=f_tag) + 32, y + 40], 20, fill="#fe2c55")
+    d.text((x0 + 16, y + 20), tag, font=f_tag, fill="white", anchor="lm")
+    y += 58
+    for ln in _wrap(d, short_title(it["title"], 90), f_title, tw, 2):
+        d.text((x0, y), ln, font=f_title, fill="white")
+        y += 46
+    y += 8
+    if it.get("orig"):
+        price, sub = vnd(it["price"]), f"Giá gốc {vnd(it['orig'])} · giảm {round(100 - it['price'] / it['orig'] * 100)}%"
+    elif it.get("price"):
+        price, sub = ("Từ dưới " if it.get("price_max") else "Chỉ dưới ") + gia_tron(it["price"]), "Bấm link đang sale còn rẻ hơn"
+    else:
+        price, sub = "Xem giá trong app", ""
+    d.text((x0, y), price, font=f_price, fill="#ffd400")
+    y += 76
+    if sub:
+        d.text((x0, y), sub, font=f_sub, fill="#e8e8e8")
+        y += 40
+    badges = []
+    if it.get("official"):
+        badges.append(("CHÍNH HÃNG", "#16a34a"))
+    st = sold_text(it.get("sold") or 0)
+    if st:
+        badges.append((f"ĐÃ BÁN {st.replace('trên ', '').upper()}+", "#f97316"))
+    bx = x0
+    for text, color in badges:
+        w = d.textlength(text, font=f_tag) + 28
+        if bx + w > W - PAD:
+            break
+        d.rounded_rectangle([bx, y, bx + w, y + 40], 20, fill=color)
+        d.text((bx + 14, y + 20), text, font=f_tag, fill="white", anchor="lm")
+        bx += w + 12
+    y += 58 if badges else 6
+    for p in (it.get("noi_bat") or [])[:3]:            # diem noi bat (AI, da loc bia)
+        lines = _wrap(d, p, f_pt, tw - 30, 1)
+        if y + 34 > H - PAD:
+            break
+        d.ellipse([x0 + 2, y + 11, x0 + 14, y + 23], fill="#ffd400")
+        d.text((x0 + 28, y), lines[0], font=f_pt, fill="white")
+        y += 38
+    if band:                                           # dai duoi day: loi chao (1 cau) + meo mua re -> tin chu chi con link
+        f_h, f_tip = _pil_font(True, 33), _pil_font(False, 26)
+        probe = ImageDraw.Draw(bg)
+        hook = _short_hook(it, 130) or "Deal hot hôm nay – số lượng có hạn, chốt nhanh kẻo hết!"
+        hl = _wrap(probe, hook, f_h, W - 2 * PAD, 2)
+        BH = 20 + 42 * len(hl) + 46
+        full = Image.new("RGB", (W, H + BH), "#fe2c55")
+        full.paste(bg, (0, 0))
+        d = ImageDraw.Draw(full)
+        for i, ln in enumerate(hl):
+            d.text((PAD, H + 14 + 42 * i), ln, font=f_h, fill="white")
+        d.text((PAD, H + 20 + 42 * len(hl)), "Mẹo mua rẻ nhất: lưu voucher shop + TikTok, chọn mã freeship rồi mới đặt hàng",
+               font=f_tip, fill="#ffe1e8")
+        bg = full
+    out = BytesIO()
+    bg.save(out, "JPEG", quality=90)
+    return out.getvalue()
+
+
+def card_caption(it, band=False):
+    """Chu ngan di kem the anh (Zalo kieu B). band=True: loi chao + meo da nam trong anh -> chi con link."""
+    if band:
+        return f"👉 XEM GIÁ SALE: {it['aff']}"
+    hook = _short_hook(it)                             # chi 1 cau dau (cho 1 man hinh dien thoai chua nhieu mon hon)
+    lines = [f"🔥 {hook}"] if hook else []
+    lines += ["💡 Lưu voucher + chọn freeship rồi mới đặt", f"👉 XEM GIÁ SALE: {it['aff']}"]
+    return "\n".join(lines)
 
 
 def tg_upload_photo(bot, chat, jpeg, caption=""):
