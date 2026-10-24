@@ -196,10 +196,11 @@ def paste_image(page, path):
 def add_caption(page, text):
     """Bam vao anh o khay -> hop 'Nhap mo ta' -> dan chu thich -> Luu. Anh + chu thich thanh 1 tin (giong Telegram)."""
     page.locator(".input-preview-item").first.click()
-    cap = page.locator("[data-placeholder*='mô tả'], [placeholder*='mô tả']").first
-    if not cap.count():
-        cap = page.locator(INPUT).locator("visible=true").last
-    cap.wait_for(timeout=10000)
+    # 24/10: hop mo ta hien cham (fadeIn) -> truoc day dem ngay = 0 roi bam nham o soan bi hop che (loi Timeout o mon 2).
+    # Nay CHO o mo ta trong hop .zl-modal hien ra.
+    cap = page.locator(".zl-modal [contenteditable='true'], [data-placeholder*='mô tả'], [placeholder*='mô tả']") \
+        .locator("visible=true").first
+    cap.wait_for(timeout=15000)
     cap.click()
     human_pause(0.5, 1)
     page.evaluate("""(text) => { const el = document.activeElement;
