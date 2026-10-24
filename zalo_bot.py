@@ -49,11 +49,16 @@ def alert(text):
             log("Khong gui duoc canh bao Telegram:", e)
 
 
-def browser(p, headless=False):
+def browser(p, headless=False, an=False):
+    """an=True (24/10 anh muon): cua so Chrome mo NGOAI man hinh -> khong bat len, anh khong bam nham. Van la Chrome that
+    (khong headless, de Zalo khong nghi). Dang nhap QR / xem thi van hien."""
     os.makedirs(PROFILE, exist_ok=True)
+    args = ["--disable-blink-features=AutomationControlled"]
+    if an:
+        args += ["--window-position=-32000,-32000"]
     return p.chromium.launch_persistent_context(
         PROFILE, channel="chrome", headless=headless, viewport={"width": 1280, "height": 860},
-        locale="vi-VN", args=["--disable-blink-features=AutomationControlled"])
+        locale="vi-VN", args=args)
 
 
 def open_zalo(ctx, wait_login=0):
@@ -289,7 +294,7 @@ def dang():
 
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        ctx = browser(p)
+        ctx = browser(p, an=os.environ.get("HIEN") != "1")   # HIEN=1: hien cua so de xem bot lam
         try:
             page = open_zalo(ctx)
             if not page:
@@ -366,7 +371,7 @@ def kiem_tra():
     """In DA_DANG_NHAP / CHUA_DANG_NHAP (cua so Bot Zalo dung de hien trang thai)."""
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
-        ctx = browser(p)
+        ctx = browser(p, an=True)
         ok = open_zalo(ctx) is not None
         ctx.close()
     print("DA_DANG_NHAP" if ok else "CHUA_DANG_NHAP")
