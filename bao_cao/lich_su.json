@@ -78,5 +78,47 @@
    "loi_lien_tiep": 0,
    "ghi_chu": "Lấy từ sent.json trên Drive, có thể cũ hơn bản thật trên GitHub"
   }
+ },
+ "2026-10-24": {
+  "ngay": "2026-10-24",
+  "luc": "08:08",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "con_thieu_de_rut_tien": 200000.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "video_cho": 45,
+   "video_da_dang": 5,
+   "anh_cho": 46,
+   "anh_da_dang": 3
+  },
+  "bot": {
+   "mon_gui_hom_nay": 2,
+   "luot_chay_hom_nay": 1,
+   "bai_fb_hom_nay": 1,
+   "loi_lien_tiep": 0
+  },
+  "dang_trang": {
+   "video_da_dang": 3,
+   "anh_da_dang": 1,
+   "loi_lien_tiep": 0
+  }
  }
 }
