@@ -65,6 +65,8 @@ DEFAULTS = {
     "win_count": 10,               # so san pham win
     "win_min_price": 100000,
     "win_max_price": 300000,
+    "win_min_commission": 5,       # % hoa hong toi thieu cho san pham win (deal thuong van dung min_commission)
+    "win_keywords_per_day": 10,    # moi ngay quet bao nhieu tu khoa (xoay vong trong WIN_KEYWORDS)
 }
 
 
@@ -286,13 +288,15 @@ def recent(ts, hours, n):
 # ---------------------------------------------------------------- trang thai da gui (sent.json)
 def migrate_state(raw):
     """Doc ca ban cu (gia tri la chuoi thoi gian) lan ban moi (gia tri la {"t":..., "exp":...})."""
-    st = {"offers": {}, "shops": {}, "links": {}, "products": {}, "meta": {}}
+    st = {"offers": {}, "shops": {}, "links": {}, "products": {}, "meta": {}, "win_sold": {}}
     raw = raw if isinstance(raw, dict) else {}
     for k in ("offers", "shops", "links", "products"):
         for key, v in (raw.get(k) or {}).items():
             st[k][key] = v if isinstance(v, dict) else {"t": str(v)}
     if isinstance(raw.get("meta"), dict):
         st["meta"] = raw["meta"]
+    if isinstance(raw.get("win_sold"), dict):          # so da ban moi ngay cua hang win: {id: [[ngay, da_ban], ...]}
+        st["win_sold"] = raw["win_sold"]
     return st
 
 
@@ -1043,16 +1047,35 @@ def fb_quota_ok(meta, cfg, n):
 
 # ---------------------------------------------------------------- san pham win (moi ngay 1 lan, chat rieng)
 # API khong tra nganh hang -> moi nganh tim theo vai tu khoa ban chay. Them nganh moi: them 1 dong vao day.
+# Moi ngay quet win_keywords_per_day tu, xoay vong (win_keywords) -> vai ngay quet het ma so luot goi API khong tang.
 WIN_KEYWORDS = {
     "gia_dung": ("Gia dụng", ["nồi chiên không dầu", "máy xay sinh tố", "bình giữ nhiệt", "hộp đựng thực phẩm",
-                              "chảo chống dính", "kệ để đồ", "nồi cơm điện", "ấm siêu tốc", "máy hút bụi", "bộ nồi"]),
+                              "chảo chống dính", "kệ để đồ", "nồi cơm điện", "ấm siêu tốc", "máy hút bụi", "bộ nồi",
+                              "máy lọc không khí", "quạt", "đèn ngủ", "cây lau nhà", "móc treo quần áo", "giỏ đựng đồ",
+                              "dao làm bếp", "thớt", "máy ép chậm", "bàn là hơi nước", "máy sấy tóc", "nồi lẩu điện",
+                              "khăn tắm", "rèm cửa", "thảm lau chân"]),
     "my_pham": ("Mỹ phẩm", ["serum", "kem chống nắng", "sữa rửa mặt", "son", "kem dưỡng", "nước tẩy trang",
-                            "toner", "mặt nạ", "dầu gội", "nước hoa"]),
+                            "toner", "mặt nạ", "dầu gội", "nước hoa", "sữa tắm", "kem nền", "phấn phủ", "mascara",
+                            "kẻ mắt", "tẩy tế bào chết", "dưỡng thể", "dầu xả", "xịt khoáng", "kem trị mụn",
+                            "son dưỡng", "tinh dầu dưỡng tóc", "kem mắt", "phấn má", "cushion"]),
     "thoi_trang": ("Thời trang", ["áo thun", "quần jean", "váy", "giày", "túi xách", "áo khoác",
-                                  "áo sơ mi", "dép", "đồ bộ", "balo"]),
+                                  "áo sơ mi", "dép", "đồ bộ", "balo", "quần short", "áo len", "chân váy", "đồ ngủ",
+                                  "giày thể thao", "sandal", "ví", "thắt lưng", "mũ", "kính mát", "tất",
+                                  "áo polo", "quần tây", "đồ lót", "áo hoodie"]),
     "me_va_be": ("Mẹ và bé", ["bỉm", "sữa bột", "đồ chơi trẻ em", "quần áo trẻ em", "bình sữa", "khăn sữa",
-                              "xe đẩy", "địu em bé", "máy hâm sữa", "ghế ăn dặm"]),
+                              "xe đẩy", "địu em bé", "máy hâm sữa", "ghế ăn dặm", "khăn ướt", "sữa tắm em bé",
+                              "núm ti", "yếm ăn", "chăn ủ", "nhiệt kế", "máy hút sữa", "thảm chơi", "đồ chơi giáo dục",
+                              "giày tập đi", "ba lô trẻ em", "bàn chải trẻ em", "kem hăm", "gối chống bẹt đầu",
+                              "tã quần"]),
 }
+
+
+def win_keywords(key, n, cfg=None):
+    """Tu khoa quet hom nay: lay win_keywords_per_day tu lien tiep, moi ngay dich sang nhom tiep theo (xoay vong)."""
+    kws = WIN_KEYWORDS[key][1]
+    k = min(int((cfg or DEFAULTS).get("win_keywords_per_day") or len(kws)), len(kws))
+    start = (n.date().toordinal() * k) % len(kws)
+    return [kws[(start + i) % len(kws)] for i in range(k)]
 
 
 # Hang theo mua: (cac thang, tu trong ten san pham - viet khong dau). San pham hop mua duoc cong diem x1,5.
@@ -1076,10 +1099,42 @@ def win_due(cfg, meta, n):
     return bool(cfg.get("nganh_win")) and n.hour >= int(cfg["win_hour"]) and meta.get("win_date") != n.date().isoformat()
 
 
-def pick_win(items, cfg, month=None):
-    """Loc gia, con hang, co nguoi mua, hoa hong; xep theo tien hoa hong (co tinh luot ban), hang hop mua x1,5.
-    Moi shop 1 san pham."""
-    month = month or now().month
+def win_per_day(hist, pid, sold, day):
+    """So don ban them moi ngay, so voi lan ghi som nhat trong 7 ngay truoc. Chua co so cu -> None."""
+    old = [h for h in hist.get(pid) or [] if day - 7 <= h[0] < day]
+    if not old:
+        return None
+    d0, s0 = old[0]
+    return max(sold - s0, 0) / (day - d0)
+
+
+def win_score(it):
+    """Thang 100: tang nong 40 + tong da ban 30 + % hoa hong 20 + hop mua 10. Accesstrade KHONG co so sao -> khong cham sao."""
+    g = it.get("per_day")
+    hot = 40 * min(math.log10(g + 1) / math.log10(501), 1) if g else 0           # +500 don/ngay = du 40
+    ban = 30 * min(max((math.log10(max(it["sold"], 1)) - 2) / (math.log10(50000) - 2), 0), 1)   # 100 -> 0, 50.000 -> 30
+    hh = 20 * min(it["pct"] / 20, 1)                                              # 20% hoa hong = du 20
+    return hot + ban + hh + (10 if it.get("mua") else 0)
+
+
+def win_record(state, items, cfg, n):
+    """Ghi so da ban hom nay cua moi hang trong khoang gia (de mai tinh 'ban them moi ngay'). Bo hang khong thay qua 14 ngay."""
+    hist, day = state.setdefault("win_sold", {}), n.date().toordinal()
+    for x in items:
+        it = tt_info(x)
+        if it["id"] and it["sold_known"] and cfg["win_min_price"] <= it["price"] <= cfg["win_max_price"]:
+            h = [p for p in hist.get(it["id"]) or [] if p[0] != day and p[0] >= day - 7][-3:]
+            hist[it["id"]] = h + [[day, it["sold"]]]
+    for pid in [p for p, h in hist.items() if not h or h[-1][0] < day - 14]:
+        del hist[pid]
+
+
+def pick_win(items, cfg, month=None, hist=None, day=None):
+    """Loc gia, con hang, da ban >= min_sold (shop giau so ban thi bo), hoa hong >= win_min_commission;
+    xep theo win_score (thang 100). hist = state['win_sold'] de tinh tang nong. Moi shop 1 san pham."""
+    month, hist = month or now().month, hist or {}
+    day = day or now().date().toordinal()
+    min_pct = cfg.get("win_min_commission", cfg["min_commission"])
     cands, seen = [], set()
     for x in items:
         it = tt_info(x)
@@ -1088,10 +1143,12 @@ def pick_win(items, cfg, month=None):
         seen.add(it["id"])
         if not (cfg["win_min_price"] <= it["price"] <= cfg["win_max_price"]):
             continue
-        if (it["sold_known"] and it["sold"] < cfg["min_sold"]) or it["pct"] < cfg["min_commission"]:
+        if not it["sold_known"] or it["sold"] < cfg["min_sold"] or it["pct"] < min_pct:
             continue
         it["mua"] = hop_mua(it["title"], month)
-        cands.append((it["commission"] * math.log10(it["sold"] + 10) * (1.5 if it["mua"] else 1), it))
+        it["per_day"] = win_per_day(hist, it["id"], it["sold"], day)
+        it["score"] = win_score(it)
+        cands.append((it["score"], it))
     cands.sort(key=lambda c: -c[0])
     out, shops = [], set()
     for _, it in cands:
@@ -1109,16 +1166,31 @@ def tiktok_search(title):
     return "https://www.tiktok.com/search?q=" + urllib.parse.quote(t)
 
 
+def fb_ads_search(title):
+    """Link Thu vien quang cao Facebook (quang cao DANG CHAY o VN) theo ~4 tu dau ten san pham. API Facebook chi tra quang cao
+    thuong mai o EU/Anh, TikTok Creative Center can dang nhap -> bot khong tu dem duoc, chi dua link de anh bam xem."""
+    t = re.sub(r"[\[【{(（].*?[\]】})）]", " ", title)
+    t = " ".join(re.sub(r"[^\w\s]", " ", t).split()[:4]) or title[:40]
+    return ("https://www.facebook.com/ads/library/?active_status=active&ad_type=all&country=VN&media_type=all"
+            "&search_type=keyword_unordered&q=" + urllib.parse.quote(t))
+
+
 def win_text(items, ten_nganh, n):
     lines = [f"🏆 Sản phẩm win hôm nay – {ten_nganh} ({n:%d/%m})",
-             f"Giá {vnd(items[0]['_min'])}–{vnd(items[0]['_max'])}, xếp theo tiền hoa hồng, ưu tiên hàng hợp mùa 🍂", ""]
+             f"Giá {vnd(items[0]['_min'])}–{vnd(items[0]['_max'])} · điểm 100 = 🔥 tăng nóng 40 + 🛒 đã bán 30 + 🎁 % hoa hồng 20 + 🍂 hợp mùa 10", ""]
+    if not any(it.get("per_day") is not None for it in items):
+        lines[-1:] = ["(🔥 tăng nóng cần số đã bán của hôm trước — vài ngày đầu chưa có nên mục này tạm 0 điểm)", ""]
     for i, it in enumerate(items, 1):
         t = it["title"] if len(it["title"]) <= 80 else it["title"][:77].rstrip() + "..."
         info = [f"💰 {vnd(it['price'])}", f"🎁 HH {it['pct']:.1f}% ≈ {vnd(it['commission'])}".replace(".", ",", 1)]
         if it.get("sold"):
             info.append(f"🛒 {it['sold']:,} đã bán".replace(",", "."))
-        lines += [f"{i}. {'🍂 ' if it.get('mua') else ''}{t}", "   " + " · ".join(info), f"   👉 {it['aff']}",
-                  f"   🔍 Xem trên TikTok: {tiktok_search(it['title'])}", ""]
+        if it.get("per_day") is not None:
+            info.append(f"🔥 +{round(it['per_day']):,} đơn/ngày".replace(",", "."))
+        diem = f" — {round(it['score'])} điểm" if "score" in it else ""
+        lines += [f"{i}. {'🍂 ' if it.get('mua') else ''}{t}{diem}", "   " + " · ".join(info), f"   👉 {it['aff']}",
+                  f"   🔍 Xem trên TikTok: {tiktok_search(it['title'])}",
+                  f"   📢 Ai đang chạy quảng cáo (Facebook): {fb_ads_search(it['title'])}", ""]
     return "\n".join(lines).strip()
 
 
@@ -1128,7 +1200,7 @@ def send_win(token, cfg, state, n, bot, chat, dry):
     if key not in WIN_KEYWORDS:
         print(f"[win] Nganh '{key}' khong co. Chon 1 trong: {', '.join(WIN_KEYWORDS)}")
         return
-    ten, kws = WIN_KEYWORDS[key]
+    ten, kws = WIN_KEYWORDS[key][0], win_keywords(key, n, cfg)
     raw = []
     for kw in kws:                                     # moi tu khoa 2 trang (40 san pham): chi ~1/10 lot khoang gia
         p = {"sort_field": "BEST_SELLERS", "limit": 20, "title_keywords": kw}
@@ -1140,7 +1212,7 @@ def send_win(token, cfg, state, n, bot, chat, dry):
                 break
             p = dict(p, page_token=page_token)
     out = []
-    for it in pick_win(raw, cfg, n.month):
+    for it in pick_win(raw, cfg, n.month, state.get("win_sold"), n.date().toordinal()):
         if len(out) >= int(cfg["win_count"]):
             break
         d = make_link(token, it["url"], it["id"])
@@ -1154,6 +1226,7 @@ def send_win(token, cfg, state, n, bot, chat, dry):
         return
     if out:
         send_telegram(bot, chat, win_text(out, ten, n))
+    win_record(state, raw, cfg, n)
     state["meta"]["win_date"] = n.date().isoformat()     # khong co san pham dat cung tinh la xong hom nay (do goi API moi gio)
     save_json(STATE_FILE, state)
 

@@ -312,10 +312,33 @@ check("voucher 600k nhung don toi thieu 6,39 trieu xep THAP hon voucher 236k don
 
 print("11) San pham win: loc gia 100k-300k, xep hoa hong, moi ngay 1 lan")
 cfgw = dict(A.DEFAULTS)
-cands = [tt(50, 90000), tt(51, 350000), tt(52, 200000, amount=5000), tt(53, 250000, amount=20000),
-         tt(54, 150000, amount=30000, shop="Shop53"), tt(55, 200000, sold=5), tt(56, 200000, rate=0.01)]
+nosold = tt(57, 200000); del nosold["units_sold"]
+cands = [tt(50, 90000), tt(51, 350000), tt(52, 200000, rate=0.08), tt(53, 250000, rate=0.12),
+         tt(54, 150000, rate=0.15, shop="Shop53"), tt(55, 200000, sold=5), tt(56, 200000, rate=0.04), nosold]
 pw = A.pick_win(cands, cfgw)
-check("chi lay gia 100k-300k, xep theo hoa hong, moi shop 1 sp", [it["id"] for it in pw] == ["54", "52"], str([it["id"] for it in pw]))
+check("chi lay gia 100k-300k, HH>=5%, co so ban, xep theo % hoa hong, moi shop 1 sp", [it["id"] for it in pw] == ["54", "52"],
+      str([it["id"] for it in pw]))
+re_ = [tt(80, 290000, rate=0.06, sold=3000), tt(81, 120000, rate=0.15, sold=3000)]
+check("tinh theo % hoa hong, KHONG theo tien (hang re 15% hon hang dat 6%)", [it["id"] for it in A.pick_win(re_, cfgw)] == ["81", "80"])
+d12 = at(12, 8).date().toordinal()
+hot = [tt(82, 200000, sold=50000), tt(83, 200000, sold=2000)]
+hw = A.pick_win(hot, cfgw, 10, {"82": [[d12 - 3, 49940]], "83": [[d12 - 3, 1100]]}, d12)
+check("hang dang tang nong (+300 don/ngay) xep tren hang ban nhieu nhung chung lai (+20/ngay)",
+      [it["id"] for it in hw] == ["83", "82"] and round(hw[0]["per_day"]) == 300 and round(hw[1]["per_day"]) == 20,
+      str([(it["id"], it.get("per_day"), round(it["score"])) for it in hw]))
+check("chua co so hom truoc thi tang nong = None (0 diem)", A.pick_win(hot, cfgw, 10, {}, d12)[0]["per_day"] is None)
+check("diem toi da 100", round(A.win_score({"per_day": 500, "sold": 50000, "pct": 20, "mua": True})) == 100)
+k1, k2, k3 = (A.win_keywords("gia_dung", at(d, 8)) for d in (12, 13, 14))
+check("moi ngay 10 tu khoa, xoay vong, 3 ngay quet het 25 tu",
+      len(k1) == 10 and k1 != k2 and set(k1 + k2 + k3) == set(A.WIN_KEYWORDS["gia_dung"][1]), str(k1))
+sr = A.migrate_state({})
+A.win_record(sr, [tt(84, 200000, sold=700), tt(85, 90000, sold=700)], cfgw, at(12, 8))
+A.win_record(sr, [tt(84, 200000, sold=900)], cfgw, at(13, 8))
+check("ghi so da ban moi ngay (chi hang trong khoang gia), doc lai duoc sau khi luu",
+      sr["win_sold"] == {"84": [[d12, 700], [d12 + 1, 900]]} and A.migrate_state(json.loads(json.dumps(sr)))["win_sold"] == sr["win_sold"],
+      str(sr["win_sold"]))
+A.win_record(sr, [], cfgw, at(28, 8))
+check("hang khong thay qua 14 ngay thi quen", sr["win_sold"] == {})
 check("den 8h va hom nay chua gui thi gui", A.win_due(cfgw, {}, at(12, 8)) and not A.win_due(cfgw, {}, at(12, 7)))
 check("hom nay gui roi thi thoi", not A.win_due(cfgw, {"win_date": "2026-10-12"}, at(12, 15)))
 check("nganh_win de trong = tat", not A.win_due(dict(cfgw, nganh_win=""), {}, at(12, 9)))
@@ -324,7 +347,8 @@ A.tt_get = lambda token, p: kw_seen.append(p["title_keywords"]) or {"status": Tr
 A.make_link = lambda token, url, pid="", full=False: {"aff_short_url": "https://shorten.asia/w" + pid}
 stw = A.migrate_state({})
 A.send_win("x", dict(cfgw, nganh_win="my_pham"), stw, at(12, 8), "b", "c", False)
-check("doi nganh = doi tu khoa tim", kw_seen == A.WIN_KEYWORDS["my_pham"][1], str(kw_seen))
+check("doi nganh = doi tu khoa tim", kw_seen == A.win_keywords("my_pham", at(12, 8)), str(kw_seen))
+check("quet xong thi ghi so da ban de mai tinh tang nong", len(stw["win_sold"]) == 10)
 check("tin co tieu de + 10 san pham + link", len(sent) == 1 and sent[0].startswith("🏆 Sản phẩm win hôm nay – Mỹ phẩm")
       and sent[0].count("shorten.asia/w") == 10, str(sent))
 check("nho da gui hom nay", stw["meta"].get("win_date") == "2026-10-12")
@@ -335,6 +359,8 @@ hm = [dict(tt(70, 200000, amount=10000), title="Bình giữ nhiệt"), dict(tt(7
 pw = A.pick_win(hm, cfgw, 10)
 check("hang hop mua duoc uu tien (x1,5) va danh dau 🍂", [it["id"] for it in pw] == ["70", "71"] and pw[0]["mua"])
 check("moi san pham co link tim kiem TikTok", sent[0].count("tiktok.com/search?q=") == 10)
+check("moi san pham co link thu vien quang cao Facebook (VN, dang chay)", sent[0].count("facebook.com/ads/library/?active_status=active") == 10
+      and A.fb_ads_search("[HOT] Bình giữ nhiệt inox 1L xịn").endswith("q=" + A.urllib.parse.quote("Bình giữ nhiệt inox")))
 check("link tim kiem bo phan quang cao trong ngoac",
       A.tiktok_search("[DEAL 20/10] Chảo chống dính CV 26cm") == "https://www.tiktok.com/search?q="
       + A.urllib.parse.quote("Chảo chống dính CV 26cm"))
