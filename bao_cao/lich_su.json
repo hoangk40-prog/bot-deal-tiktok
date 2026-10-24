@@ -81,7 +81,7 @@
  },
  "2026-10-24": {
   "ngay": "2026-10-24",
-  "luc": "08:08",
+  "luc": "22:57",
   "loi": [],
   "accesstrade_hom_nay": {
    "don": 0,
@@ -104,20 +104,20 @@
   "con_thieu_de_rut_tien": 200000.0,
   "telegram_nguoi_theo_doi": 2,
   "facebook_hang_cho": {
-   "video_cho": 45,
-   "video_da_dang": 5,
-   "anh_cho": 46,
-   "anh_da_dang": 3
+   "video_cho": 70,
+   "video_da_dang": 8,
+   "anh_cho": 44,
+   "anh_da_dang": 5
   },
   "bot": {
-   "mon_gui_hom_nay": 2,
-   "luot_chay_hom_nay": 1,
-   "bai_fb_hom_nay": 1,
+   "mon_gui_hom_nay": 32,
+   "luot_chay_hom_nay": 12,
+   "bai_fb_hom_nay": 2,
    "loi_lien_tiep": 0
   },
   "dang_trang": {
-   "video_da_dang": 3,
-   "anh_da_dang": 1,
+   "video_da_dang": 6,
+   "anh_da_dang": 3,
    "loi_lien_tiep": 0
   }
  }
