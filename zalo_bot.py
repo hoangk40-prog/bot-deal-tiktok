@@ -57,13 +57,18 @@ def browser(p, headless=False):
 
 
 def open_zalo(ctx, wait_login=0):
+    # 24/10: lich 10h bao nham "bi dang xuat" (Zalo Web tai cham > 25s, 10h15 chay tay van dang nhap) -> cho 60s, tai lai 1 lan nua
     page = ctx.pages[0] if ctx.pages else ctx.new_page()
-    page.goto(ZALO, wait_until="domcontentloaded")
-    try:
-        page.wait_for_selector(LOGGED_IN, timeout=max(wait_login, 25) * 1000)
-        return page
-    except Exception:
-        return None
+    for lan in range(2):
+        try:
+            page.goto(ZALO, wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_selector(LOGGED_IN, timeout=max(wait_login, 60) * 1000)
+            return page
+        except Exception:
+            if wait_login or "qr" in page.url.lower() or page.locator("canvas, .qrcode, img[alt*='QR']").count():
+                return None                   # dang hien ma QR = dang xuat that (hoac dang cho quet) -> khong thu lai
+            log(f"Zalo Web tai cham (lan {lan + 1}) -> tai lai")
+    return None
 
 
 # ---------------------------------------------------------------- chon deal
