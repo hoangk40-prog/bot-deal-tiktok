@@ -39,6 +39,44 @@ def log(*a):
         pass
 
 
+def qr_qua_telegram(ctx, phut=10):
+    """24/10: nick phu bi da ra (lich 15h/18h/20h deu loi) -> chup MA QR gui Telegram chat rieng cua anh; anh mo Zalo NICK PHU
+    tren dien thoai > Quet ma > chon anh. Ma het han thi lay ma moi, gui lai (toi da 6 anh). Quet xong tra ve page da dang nhap."""
+    import re
+    local = ad.load_json("config.local.json", {})
+    bot, chat = str(local.get("telegram_bot_token", "")).strip(), str(local.get("telegram_chat_id", "")).strip()
+    if not (bot and chat):
+        return None
+    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+    het, gui, lan = time.time() + phut * 60, 0, 0
+    while time.time() < het:
+        moi = page.get_by_text(re.compile("Lấy mã mới|hết hạn", re.I)).locator("visible=true")
+        if moi.count():                                # ma QR het han -> bam lay ma moi
+            try:
+                moi.first.click()
+                page.wait_for_timeout(2500)
+            except Exception:
+                pass
+            lan = 0
+        if lan == 0 and gui < 6:
+            try:
+                jpg = page.screenshot(type="jpeg", quality=90)
+                ad.tg_upload_photo(bot, chat, jpg, "🔐 Bot Zalo bị đăng xuất. Anh LƯU ảnh này → mở Zalo NICK PHỤ trên điện thoại → "
+                                   "Quét mã QR → chọn ảnh này. Quét xong bot tự đăng tiếp lượt này (chờ tối đa 10 phút).")
+                gui += 1
+                log(f"Da gui ma QR qua Telegram (lan {gui})")
+            except Exception as e:
+                log("Gui ma QR loi:", str(e)[:120])
+        lan = (lan + 1) % 20                           # ~1 phut gui lai anh moi (ma QR Zalo doi lien tuc)
+        try:
+            page.wait_for_selector(LOGGED_IN, timeout=3000)
+            return page
+        except Exception:
+            pass
+    log("Het 10 phut chua quet ma QR")
+    return None
+
+
 def alert(text):
     local = ad.load_json("config.local.json", {})
     bot, chat = str(local.get("telegram_bot_token", "")).strip(), str(local.get("telegram_chat_id", "")).strip()
@@ -63,16 +101,32 @@ def browser(p, headless=False, an=False):
 
 def open_zalo(ctx, wait_login=0):
     # 24/10: lich 10h bao nham "bi dang xuat" (Zalo Web tai cham > 25s, 10h15 chay tay van dang nhap) -> cho 60s, tai lai 1 lan nua
+    # 24/10 toi: 15h/18h/20h bao "dang xuat" nhung 22h55 van dang nhap -> CHI coi la dang xuat khi Zalo chuyen sang
+    # id.zalo.me (trang ma QR); hop hoi "dung Zalo tai day" thi bam; moi lan khong vao duoc chup man hinh de biet Zalo hien gi.
+    import re
     page = ctx.pages[0] if ctx.pages else ctx.new_page()
-    for lan in range(2):
+    for lan in range(3):
         try:
             page.goto(ZALO, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_selector(LOGGED_IN, timeout=max(wait_login, 60) * 1000)
             return page
         except Exception:
-            if wait_login or "qr" in page.url.lower() or page.locator("canvas, .qrcode, img[alt*='QR']").count():
-                return None                   # dang hien ma QR = dang xuat that (hoac dang cho quet) -> khong thu lai
-            log(f"Zalo Web tai cham (lan {lan + 1}) -> tai lai")
+            try:
+                page.screenshot(path=os.path.join(OUT_DIR, f"khong_vao_{ad.now():%d%m_%H%M}_{lan + 1}.png"))
+            except Exception:
+                pass
+            if wait_login or "id.zalo.me" in page.url:
+                return None                   # trang ma QR = dang xuat that -> qr_qua_telegram lo
+            nut = page.get_by_role("button", name=re.compile("tại đây|Dùng Zalo|Tiếp tục|Đồng ý|Thử lại", re.I))
+            if nut.count():
+                log(f"Zalo hien hop '{nut.first.inner_text()[:40]}' -> bam")
+                try:
+                    nut.first.click()
+                    page.wait_for_selector(LOGGED_IN, timeout=30000)
+                    return page
+                except Exception:
+                    pass
+            log(f"Zalo Web chua vao duoc (lan {lan + 1}, {page.url[:60]}) -> tai lai")
     return None
 
 
@@ -299,8 +353,12 @@ def dang():
             page = open_zalo(ctx)
             if not page:
                 log("NICK PHU BI DANG XUAT khoi Zalo Web")
-                alert("⚠️ Bot Zalo bị đăng xuất. Anh chạy dang_nhap_zalo.bat rồi quét mã QR bằng điện thoại cầm NICK PHỤ.")
-                sys.exit(1)
+                page = None if dry else qr_qua_telegram(ctx)
+                if not page:
+                    alert("⚠️ Bot Zalo bị đăng xuất, lượt này KHÔNG đăng được. Anh chạy dang_nhap_zalo.bat rồi quét mã QR "
+                          "bằng điện thoại cầm NICK PHỤ.")
+                    sys.exit(1)
+                log("Da dang nhap lai qua ma QR gui Telegram -> dang tiep luot nay")
             open_group(page, nhom)
             TARGET["name"] = nhom
             log(f"Da mo nhom '{nhom}'")
