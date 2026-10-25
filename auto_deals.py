@@ -58,7 +58,8 @@ DEFAULTS = {
     "max_per_category": 2,         # moi nhom hang toi da bao nhieu san pham/dot (cho da dang)
     "fb_max_per_day": 6,           # Trang Facebook qua Make.com: toi da bao nhieu bai/ngay (anh chon 6 ngay 21/10 de danh credits Make cho video + anh)
     "fb_gap_hours": 2.5,           # 2 bai Facebook cach nhau it nhat bao nhieu gio (~3 gio: 7h,10h,13h,16h,19h,22h; de 2.5 vi GitHub chay lech gio vai phut)
-    "zalo_combo": False,           # true: moi dot gui 1 ANH GHEP (danh so, co gia) + 1 TIN CHU GOP -> chi 2 lan copy sang Zalo
+    "shopee_per_run": 1,           # 25/10: moi lan dang lay may mon Shopee (shopee_hang.json do shopee_bot.py tren may chon), 0 = tat
+    "zalo_combo": False,          # true: moi dot gui 1 ANH GHEP (danh so, co gia) + 1 TIN CHU GOP -> chi 2 lan copy sang Zalo
     # ---- san pham win: moi ngay 1 lan gui 10 san pham hoa hong cao ve chat rieng
     "nganh_win": "gia_dung",       # doi nganh: gia_dung / my_pham / thoi_trang / me_va_be (xem WIN_KEYWORDS). De "" = tat
     "win_hour": 8,                 # gui luc may gio (gio VN), moi ngay 1 lan
@@ -611,6 +612,23 @@ def pick_tiktok(items, state, cfg, n):
     return out, stats
 
 
+def pick_shopee(state, cfg, n, data=None):
+    """25/10: hang Shopee do shopee_bot.py (MAY anh, Shopee Affiliate rieng) chon moi sang, day len GitHub = shopee_hang.json.
+    Moi lan chay lay `shopee_per_run` mon chua dang. Chi dung hang lay HOM NAY (gia/flash sale doi nhanh, khong ghi gia cu)."""
+    want = int(cfg.get("shopee_per_run", 1))
+    d = data if data is not None else load_json("shopee_hang.json", {})
+    if want <= 0 or d.get("ngay") != n.date().isoformat():
+        return []
+    out = []
+    for it in d.get("items") or []:
+        if len(out) >= want:
+            break
+        if it.get("aff") and not recent((state["products"].get(it.get("key", "")) or {}).get("t", ""),
+                                         cfg["product_cooldown_days"] * 24, n):
+            out.append(dict(it))
+    return out
+
+
 def make_link(token, product_url, product_id="", full=False, utm="zalo"):
     """Tao link hoa hong rut gon. Tra ve data cua API (co aff_short_url; full=True co them ten/anh/gia), None neu loi.
     utm: nguon de xem don tu dau tren Accesstrade (tool Live AI dung "youtube_live")."""
@@ -762,20 +780,33 @@ def caption(it):
             save = it["orig"] - it["price"]
             lines += [f"❌ Giá gốc: {vnd(it['orig'])}",
                       f"✅ GIÁ SALE: {vnd(it['price'])}  (-{round(save / it['orig'] * 100)}%, tiết kiệm {vnd(save)})"]
+        elif it.get("gia_that"):   # Shopee Affiliate tra GIA BAN THAT (da tru khuyen mai shop)
+            lines.append(f"💰 Giá đang bán: {vnd(it['price'])}")
         else:                      # 23/10 anh duyet: khong ghi dung gia niem yet (nhin dat), ghi "duoi X" lam tron LEN -> luon dung
             gia = ("từ " if it.get("price_max") else "") + "dưới " + gia_tron(it["price"])
             lines.append(f"💰 Giá chỉ {gia} – bấm link đang sale còn rẻ hơn")
-    if it.get("official"):
+        if it.get("flash"):
+            lines.append("⚡ Đang Flash Sale – giá có thể đổi nhanh, vào sớm kẻo lỡ")
+    if it.get("rating") and it.get("reviews", 0) >= 20:     # sao THAT cua Shopee (TikTok/Accesstrade khong co -> khong ghi)
+        lines.append(f"⭐ {it['rating']:.1f}/5 – {it['reviews']:,} lượt đánh giá".replace(",", "#").replace(".", ",").replace("#", "."))
+    if it.get("mall"):
+        lines.append(f"✅ Shopee Mall (hàng chính hãng) – shop {it['shop']}")
+    elif it.get("official"):
         lines.append(f"✅ Hàng chính hãng – shop {it['shop']}" if it.get("shop") else "✅ Hàng chính hãng")
     elif it.get("shop"):
-        lines.append(f"🏪 Shop: {it['shop']}")
+        lines.append(f"🏪 Shop: {it['shop']}" + (" (Yêu thích+)" if it.get("preferred") else ""))
+    if it.get("vouchers"):
+        lines.append("🎟 Mã giảm giá của shop (nhập lúc thanh toán):")
+        lines += [f"   • {v['code']}" + (f" – {v['desc']}" if v.get("desc") else "") + (f" (HSD {v['end']})" if v.get("end") else "")
+                  for v in it["vouchers"][:3]]
     if it.get("noi_bat"):
         lines.append("✨ Điểm nổi bật:")
         lines += [f"   • {p}" for p in it["noi_bat"]]
     st = sold_text(sold)
     if st:
         lines.append(f"🏆 Hàng bán chạy – đã bán {st} sản phẩm" if sold >= 10000 else f"🛒 Đã bán {st} sản phẩm")
-    lines += ["💡 Mẹo mua rẻ nhất: bấm “Lưu” voucher của shop + voucher TikTok, chọn mã freeship rồi mới thanh toán",
+    san = "Shopee" if it.get("san") == "shopee" else "TikTok"
+    lines += [f"💡 Mẹo mua rẻ nhất: bấm “Lưu” voucher của shop + voucher {san}, chọn mã freeship rồi mới thanh toán",
               f"👉 BẤM XEM GIÁ SALE: {it['aff']}"]
     return "\n".join(lines)
 
@@ -1032,50 +1063,96 @@ def make_card(it, band=False):
     bg.paste(pic, (PAD, PAD), mask)
     d = ImageDraw.Draw(bg)
     x0, tw = PAD + S + 40, W - (PAD + S + 40) - PAD
-    y = PAD + 2
-    f_tag, f_title, f_price, f_sub, f_pt = _pil_font(True, 24), _pil_font(True, 38), _pil_font(True, 66), \
-        _pil_font(False, 25), _pil_font(False, 27)
-    tag = "DEAL HOT TIKTOK SHOP"
-    d.rounded_rectangle([x0, y, x0 + d.textlength(tag, font=f_tag) + 32, y + 40], 20, fill="#fe2c55")
-    d.text((x0 + 16, y + 20), tag, font=f_tag, fill="white", anchor="lm")
-    y += 58
-    for ln in _wrap(d, short_title(it["title"], 90), f_title, tw, 2):
-        d.text((x0, y), ln, font=f_title, fill="white")
-        y += 46
-    y += 8
+
+    def fit(text, bold, size, width=tw):               # chu qua dai thi nho dan cho vua cot
+        f = _pil_font(bold, size)
+        while size > 18 and d.textlength(text, font=f) > width:
+            size -= 2
+            f = _pil_font(bold, size)
+        return f
+    # 25/10 anh muon chu TO lap kin khung (truoc con nhieu khoang den) + gia goc / % giam to hon:
+    # chu to hon, so diem noi bat tu vua cho, ca khoi canh giua theo chieu doc
+    f_tag, f_title, f_pt = _pil_font(True, 28), _pil_font(True, 46), _pil_font(False, 33)
+    shopee = it.get("san") == "shopee"
+    tag = "DEAL HOT SHOPEE" if shopee else "DEAL HOT TIKTOK SHOP"
+    title_lines = _wrap(d, short_title(it["title"], 90), f_title, tw, 2)
+    old, cut, sub = "", "", ""                         # gia goc (gach ngang) + % giam (do, dam) hoac 1 dong ghi chu
     if it.get("orig"):
-        price, sub = vnd(it["price"]), f"Giá gốc {vnd(it['orig'])} · giảm {round(100 - it['price'] / it['orig'] * 100)}%"
+        price = vnd(it["price"])
+        old, cut = vnd(it["orig"]), f"-{round(100 - it['price'] / it['orig'] * 100)}%"
+    elif it.get("gia_that"):
+        price, sub = vnd(it["price"]), "Giá đang bán trên Shopee"
     elif it.get("price"):
         price, sub = ("Từ dưới " if it.get("price_max") else "Chỉ dưới ") + gia_tron(it["price"]), "Bấm link đang sale còn rẻ hơn"
     else:
         price, sub = "Xem giá trong app", ""
-    d.text((x0, y), price, font=f_price, fill="#ffd400")
-    y += 76
-    if sub:
-        d.text((x0, y), sub, font=f_sub, fill="#e8e8e8")
-        y += 40
+    f_price = fit(price, True, 92)
+    f_old, f_cut = _pil_font(True, 40), _pil_font(True, 46)
+    f_sub = fit(sub, True, 34) if sub else None
     badges = []
-    if it.get("official"):
+    if it.get("mall"):
+        badges.append(("SHOPEE MALL", "#d0011b"))
+    elif it.get("official"):
         badges.append(("CHÍNH HÃNG", "#16a34a"))
+    if it.get("rating") and it.get("reviews", 0) >= 20:
+        badges.append((f"{it['rating']:.1f} SAO".replace(".", ","), "#ca8a04"))   # phong chu khong co dau sao
+    if it.get("vouchers"):
+        badges.append(("CÓ MÃ GIẢM", "#7c3aed"))
     st = sold_text(it.get("sold") or 0)
     if st:
         badges.append((f"ĐÃ BÁN {st.replace('trên ', '').upper()}+", "#f97316"))
-    bx = x0
+    rows, bx = [[]], 0                                 # nhan xep toi da 2 hang
     for text, color in badges:
-        w = d.textlength(text, font=f_tag) + 28
-        if bx + w > W - PAD:
-            break
-        d.rounded_rectangle([bx, y, bx + w, y + 40], 20, fill=color)
-        d.text((bx + 14, y + 20), text, font=f_tag, fill="white", anchor="lm")
+        w = d.textlength(text, font=f_tag) + 32
+        if bx + w > tw:
+            if len(rows) == 2:
+                break
+            rows.append([])
+            bx = 0
+        rows[-1].append((text, color, bx, w))
         bx += w + 12
-    y += 58 if badges else 6
-    for p in (it.get("noi_bat") or [])[:3]:            # diem noi bat (AI, da loc bia)
-        lines = _wrap(d, p, f_pt, tw - 30, 1)
-        if y + 34 > H - PAD:
+    rows = [r for r in rows if r]
+    # do chieu cao ca khoi -> them diem noi bat toi khi day khung -> canh giua theo chieu doc
+    LT, LP, LO, LB, LN = 56, 104, 58, 56, 48
+    total = 68 + LT * len(title_lines) + 12 + LP + (LO if old else 50 if sub else 0) + LB * len(rows) + (10 if rows else 0)
+    pts = []
+    for p in (it.get("noi_bat") or [])[:4]:            # diem noi bat (AI, da loc bia)
+        if total + LN > H - 2 * PAD:
             break
-        d.ellipse([x0 + 2, y + 11, x0 + 14, y + 23], fill="#ffd400")
-        d.text((x0 + 28, y), lines[0], font=f_pt, fill="white")
-        y += 38
+        pts.append(_wrap(d, p, f_pt, tw - 34, 1)[0])
+        total += LN
+    y = PAD + max(0, (H - 2 * PAD - total) // 2)
+    d.rounded_rectangle([x0, y, x0 + d.textlength(tag, font=f_tag) + 36, y + 48], 24, fill="#ee4d2d" if shopee else "#fe2c55")
+    d.text((x0 + 18, y + 24), tag, font=f_tag, fill="white", anchor="lm")
+    y += 68
+    for ln in title_lines:
+        d.text((x0, y), ln, font=f_title, fill="white")
+        y += LT
+    y += 12
+    d.text((x0, y), price, font=f_price, fill="#ffd400")
+    y += LP
+    if old:                                            # gia goc gach ngang + % giam do dam
+        d.text((x0, y + 4), old, font=f_old, fill="#d4d4d4")
+        ow = d.textlength(old, font=f_old)
+        d.line([x0, y + 4 + 25, x0 + ow, y + 4 + 25], fill="#d4d4d4", width=4)
+        cx = x0 + ow + 22
+        cw = d.textlength(cut, font=f_cut) + 28
+        d.rounded_rectangle([cx, y - 2, cx + cw, y + 52], 14, fill="#ef4444")
+        d.text((cx + 14, y + 25), cut, font=f_cut, fill="white", anchor="lm")
+        y += LO
+    elif sub:
+        d.text((x0, y), sub, font=f_sub, fill="#e8e8e8")
+        y += 50
+    for r in rows:
+        for text, color, bx, w in r:
+            d.rounded_rectangle([x0 + bx, y, x0 + bx + w, y + 44], 22, fill=color)
+            d.text((x0 + bx + 16, y + 22), text, font=f_tag, fill="white", anchor="lm")
+        y += LB
+    y += 10 if rows else 0
+    for p in pts:
+        d.ellipse([x0 + 2, y + 13, x0 + 16, y + 27], fill="#ffd400")
+        d.text((x0 + 32, y), p, font=f_pt, fill="white")
+        y += LN
     if band:                                           # dai duoi day: loi chao (1 cau) + meo mua re -> tin chu chi con link
         f_h, f_tip = _pil_font(True, 33), _pil_font(False, 26)
         probe = ImageDraw.Draw(bg)
@@ -1101,6 +1178,8 @@ def card_caption(it, band=False):
         return f"👉 XEM GIÁ SALE: {it['aff']}"
     hook = _short_hook(it)                             # chi 1 cau dau (cho 1 man hinh dien thoai chua nhieu mon hon)
     lines = [f"🔥 {hook}"] if hook else []
+    if it.get("vouchers"):                             # ma giam phai o dang chu (chep duoc), khong chi trong anh
+        lines.append("🎟 Mã shop: " + ", ".join(v["code"] for v in it["vouchers"][:3]))
     lines += ["💡 Lưu voucher + chọn freeship rồi mới đặt", f"👉 XEM GIÁ SALE: {it['aff']}"]
     return "\n".join(lines)
 
@@ -1489,10 +1568,11 @@ def main():
             text_links.append(l)              # da la link hoa hong: gui nguyen
 
     # --- chon san pham TikTok, tao link hoa hong (link loi thi lay san pham du phong)
+    sp_items = pick_shopee(state, cfg, n)              # hang Shopee (may anh chon moi sang) thay 1 cho hang TikTok
     picks, pstats = pick_tiktok(raw, state, cfg, n)
     products = []
     for it in picks:
-        if len(products) >= cfg["max_products"]:
+        if len(products) >= cfg["max_products"] - len(sp_items):
             break
         d = make_link(token, it["url"], it["id"])
         if d:
@@ -1500,7 +1580,9 @@ def main():
             products.append(it)
         else:
             pstats["tao link loi"] += 1
-    posts = mine + products
+    posts = mine + sp_items + products
+    if sp_items:
+        print(f"[shopee] {len(sp_items)} mon tu shopee_hang.json")
 
     # --- chon voucher Shopee
     chosen, stats, samples = pick_new(offers, state, cfg, n)
@@ -1572,7 +1654,7 @@ def main():
         if it.get("src"):
             state["links"][it["src"]] = {"t": ts}
         else:
-            state["products"]["tt|" + it["id"]] = {"t": ts}
+            state["products"][it.get("key") or "tt|" + it["id"]] = {"t": ts}
         if not combo_ok:
             time.sleep(1)
     # --- Trang Facebook: 1 bai/lan chay, gioi han so bai/ngay (khong lam hong Telegram neu loi).

@@ -140,8 +140,9 @@ def pick_deals():
     state = ad.load_json(STATE, {})
     state.setdefault("products", {})
     want = int(cfg.get("zalo_items", 4))
+    import shopee_bot                             # 25/10: 1 mon Shopee (may anh chon moi sang) + con lai TikTok
+    items = ad.pick_shopee(state, cfg, n, shopee_bot.read_hang())
     ranked, stats = ad.pick_tiktok(ad.fetch_tiktok(token, cfg), state, cfg, n)
-    items = []
     for it in ranked:
         if len(items) >= want:
             break
@@ -155,7 +156,7 @@ def pick_deals():
 
 def save_done(state, items, n):
     for it in items:
-        state["products"]["tt|" + it["id"]] = {"t": n.isoformat()}
+        state["products"][it.get("key") or "tt|" + it["id"]] = {"t": n.isoformat()}
     keep = (n - datetime.timedelta(days=30)).isoformat()
     state["products"] = {k: v for k, v in state["products"].items() if v.get("t", "") >= keep}
     ad.save_json(STATE, state)
