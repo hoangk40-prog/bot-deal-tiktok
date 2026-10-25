@@ -47,7 +47,7 @@ def qr_qua_telegram(ctx, phut=10):
     bot, chat = str(local.get("telegram_bot_token", "")).strip(), str(local.get("telegram_chat_id", "")).strip()
     if not (bot and chat):
         return None
-    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+    page = next((pg for pg in ctx.pages if "zalo.me" in pg.url), None) or (ctx.pages[0] if ctx.pages else ctx.new_page())
     het, gui, lan = time.time() + phut * 60, 0, 0
     while time.time() < het:
         moi = page.get_by_text(re.compile("Lấy mã mới|hết hạn", re.I)).locator("visible=true")
@@ -87,16 +87,91 @@ def alert(text):
             log("Khong gui duoc canh bao Telegram:", e)
 
 
-def browser(p, headless=False, an=False):
-    """an=True (24/10 anh muon): cua so Chrome mo NGOAI man hinh -> khong bat len, anh khong bam nham. Van la Chrome that
-    (khong headless, de Zalo khong nghi). Dang nhap QR / xem thi van hien."""
+CDP_PORT = 9333
+
+
+def chrome_exe():
+    for base in (os.environ.get("PROGRAMFILES", ""), os.environ.get("PROGRAMFILES(X86)", ""), os.environ.get("LOCALAPPDATA", "")):
+        p = os.path.join(base, "Google", "Chrome", "Application", "chrome.exe")
+        if os.path.exists(p):
+            return p
+    return "chrome.exe"
+
+
+def start_chrome():
+    """Mo Chrome cua bot CHAY RIENG (khong phu thuoc python): bot dang xong khong tat, lan sau ghe vao lai."""
+    import subprocess
     os.makedirs(PROFILE, exist_ok=True)
-    args = ["--disable-blink-features=AutomationControlled"]
-    if an:
-        args += ["--window-position=-32000,-32000"]
-    return p.chromium.launch_persistent_context(
-        PROFILE, channel="chrome", headless=headless, viewport={"width": 1280, "height": 860},
-        locale="vi-VN", args=args)
+    args = [chrome_exe(), f"--remote-debugging-port={CDP_PORT}", f"--user-data-dir={PROFILE}", "--no-first-run",
+            "--no-default-browser-check", "--disable-blink-features=AutomationControlled", "--lang=vi-VN",
+            "--window-size=1280,900", "--window-position=-32000,-32000", ZALO]
+    flags = 0x00000008 | 0x00000200                  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+    try:
+        subprocess.Popen(args, creationflags=flags | 0x01000000)   # + CREATE_BREAKAWAY_FROM_JOB: lich Windows xong khong tat theo
+    except OSError:
+        subprocess.Popen(args, creationflags=flags)
+    log("Mo Chrome cua bot (de mo luon, an ngoai man hinh)")
+
+
+class BotChrome:
+    """Gan vao Chrome dang chay. close() chi ngat ket noi, KHONG tat Chrome (Zalo Web giu phien dang nhap)."""
+
+    def __init__(self, b):
+        self.b = b
+        self.ctx = b.contexts[0]
+
+    @property
+    def pages(self):
+        return self.ctx.pages
+
+    def new_page(self):
+        return self.ctx.new_page()
+
+    def close(self):
+        try:
+            self.b.close()
+        except Exception:
+            pass
+
+
+def show(page, hien):
+    """Dua cua so bot ra giua man hinh (dang nhap QR / xem) hoac day ra ngoai man hinh (dang)."""
+    try:
+        s = page.context.new_cdp_session(page)
+        wid = s.send("Browser.getWindowForTarget")["windowId"]
+        s.send("Browser.setWindowBounds", {"windowId": wid, "bounds": {"windowState": "normal"}})
+        s.send("Browser.setWindowBounds", {"windowId": wid, "bounds": {"left": 60 if hien else -32000, "top": 40 if hien else -32000,
+                                                                      "width": 1280, "height": 900}})
+        if hien:
+            page.bring_to_front()
+    except Exception as e:
+        log("Khong doi vi tri cua so:", str(e)[:80])
+
+
+def browser(p, headless=False, an=False):
+    """25/10: Zalo hay DANG XUAT nick phu sau khi bot tat/mo lai Chrome (24/10 22h55 dang xong, 22h58 mo lai da ra ma QR;
+    12h07 -> 12h20 cung vay). Nay Chrome cua bot MO LUON (an ngoai man hinh), moi luot bot chi gan vao qua cong 9333 roi
+    ngat, khong tat -> nhu nguoi de tab Zalo Web mo ca ngay. Chrome bi tat (tat may, anh dong) thi luot sau tu mo lai.
+    an=False (dang nhap QR / xem): keo cua so ra giua man hinh."""
+    url = f"http://127.0.0.1:{CDP_PORT}"
+    try:
+        b = p.chromium.connect_over_cdp(url, timeout=5000)
+    except Exception:
+        start_chrome()
+        b = None
+        for _ in range(30):
+            time.sleep(1)
+            try:
+                b = p.chromium.connect_over_cdp(url, timeout=5000)
+                break
+            except Exception:
+                pass
+        if b is None:
+            raise RuntimeError("Khong mo duoc Chrome cua bot Zalo")
+    ctx = BotChrome(b)
+    page = next((pg for pg in ctx.pages if "zalo.me" in pg.url), None) or (ctx.pages[0] if ctx.pages else ctx.new_page())
+    show(page, not an)
+    return ctx
 
 
 def open_zalo(ctx, wait_login=0):
@@ -104,7 +179,13 @@ def open_zalo(ctx, wait_login=0):
     # 24/10 toi: 15h/18h/20h bao "dang xuat" nhung 22h55 van dang nhap -> CHI coi la dang xuat khi Zalo chuyen sang
     # id.zalo.me (trang ma QR); hop hoi "dung Zalo tai day" thi bam; moi lan khong vao duoc chup man hinh de biet Zalo hien gi.
     import re
-    page = ctx.pages[0] if ctx.pages else ctx.new_page()
+    page = next((pg for pg in ctx.pages if "zalo.me" in pg.url), None) or (ctx.pages[0] if ctx.pages else ctx.new_page())
+    if "chat.zalo.me" in page.url:                     # Chrome de mo san: tab Zalo con dang nhap thi dung luon, khong tai lai
+        try:
+            page.wait_for_selector(LOGGED_IN, timeout=8000)
+            return page
+        except Exception:
+            pass
     for lan in range(3):
         try:
             page.goto(ZALO, wait_until="domcontentloaded", timeout=60000)
@@ -420,7 +501,8 @@ def dang_nhap():
         page = open_zalo(ctx, wait_login=300)
         if page:
             human_pause(5, 6)
-            print("DA DANG NHAP. Tu nay bot dung dang nhap nay (luu o", PROFILE, ")")
+            show(page, False)                          # Chrome van mo, chi day ra ngoai man hinh
+            print("DA DANG NHAP. Cua so Zalo cua bot van mo (an ngoai man hinh) - DUNG TAT no.", flush=True)
         else:
             print("Chua dang nhap duoc. Chay lai dang_nhap_zalo.bat.")
         ctx.close()
@@ -442,7 +524,9 @@ def xem():
         ctx = browser(p)
         page = open_zalo(ctx)
         print("Da dang nhap" if page else "CHUA dang nhap")
-        input("Xem xong bam Enter de dong...")
+        input("Xem xong bam Enter (cua so bot an di, KHONG tat)...")
+        if page:
+            show(page, False)
         ctx.close()
 
 
