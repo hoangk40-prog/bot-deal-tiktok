@@ -187,13 +187,20 @@ def main():
     if kieu not in KIEU:
         sys.exit("Thieu KIEU=video hoac KIEU=anh")
     dry, an = os.environ.get("DRY_RUN") == "1", os.environ.get("AN") == "1"
-    page, token = os.environ.get("FB_PAGE_ID", ""), os.environ.get("FB_PAGE_TOKEN", "")
+    # 25/10 Trang thu 2 "Cuoi Moi Ngay Sale Hoi" (anh muon 2 Trang noi dung KHAC nhau): chung kho Drive,
+    # Trang 1 chi dang file SO LE, Trang 2 chi dang SO CHAN -> khong bao gio trung. TRANG=2 dung FB_PAGE2_*.
+    trang = (os.environ.get("TRANG") or "1").strip()
+    sfx = "2" if trang == "2" else ""
+    page, token = os.environ.get(f"FB_PAGE{sfx}_ID", ""), os.environ.get(f"FB_PAGE{sfx}_TOKEN", "")
     sa = os.environ.get("GOOGLE_SA_JSON", "")
     if not sa or (not dry and not (page and token)):
-        sys.exit("Thieu GOOGLE_SA_JSON / FB_PAGE_ID / FB_PAGE_TOKEN")
+        sys.exit(f"Thieu GOOGLE_SA_JSON / FB_PAGE{sfx}_ID / FB_PAGE{sfx}_TOKEN")
     k = KIEU[kieu]
     st = load_state()
-    done = st.setdefault("da_dang", {}).setdefault(kieu, [])
+    sub = st.setdefault("trang2", {}) if trang == "2" else st     # trang thai rieng moi Trang
+    done = sub.setdefault("da_dang", {}).setdefault(kieu, [])
+    chan = 0 if trang == "2" else 1                               # so du khi chia 2: Trang 2 so chan, Trang 1 so le
+    print(f"Trang {trang}: chi dang file so {'chan' if chan == 0 else 'le'}")
 
     drive = Drive(sa)
     goc = drive.child(drive.root(), k["goc"], folder=True)["id"]
@@ -202,6 +209,7 @@ def main():
     tieu_de = titles(drive.text(drive.child(goc, k["tieu_de"], folder=False)["id"]))
     files = drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,size,mimeType,videoMediaMetadata")
     print(f"{k['cho']}: {len(files)} file, {len(tieu_de)} dong tieu de")
+    files = [f for f in files if not re.match(r"\d+", f["name"]) or int(re.match(r"\d+", f["name"]).group()) % 2 == chan]
     got = pick(files, tieu_de, done)
     if not got:
         print("Khong co file nao du dieu kien -> bo qua lan nay.")
@@ -227,9 +235,9 @@ def main():
     except Exception as e:
         print("LOI:", e)
         if not an:
-            st["loi_lien_tiep"] = st.get("loi_lien_tiep", 0) + 1
-            if st["loi_lien_tiep"] == 3:
-                tg_alert(f"⚠️ Bot dang Trang Facebook loi 3 lan lien tiep ({kieu}): {str(e)[:300]}")
+            sub["loi_lien_tiep"] = sub.get("loi_lien_tiep", 0) + 1
+            if sub["loi_lien_tiep"] == 3:
+                tg_alert(f"⚠️ Bot dang Trang Facebook {trang} loi 3 lan lien tiep ({kieu}): {str(e)[:300]}")
             save_state(st)
         raise
 
@@ -242,7 +250,7 @@ def main():
             print("Xoa bai thu loi (vao Trang xoa tay):", e)
         return
 
-    st["loi_lien_tiep"] = 0
+    sub["loi_lien_tiep"] = 0
     done.append(f["name"])
     try:
         drive.move(f["id"], cho, xong)

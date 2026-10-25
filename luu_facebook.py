@@ -72,7 +72,12 @@ try:
 except Exception:
     pass
 
-cfg["fb_page_id"], cfg["fb_page_token"] = page["id"], page["access_token"]
+# 25/10: Trang thu 2 ("Cuoi Moi Ngay Sale Hoi"): chon Trang khac Trang dang luu -> luu vao fb_page2_* (khong de mat Trang cu)
+if cfg.get("fb_page_id") and cfg["fb_page_id"] != page["id"]:
+    cfg["fb_page2_id"], cfg["fb_page2_token"] = page["id"], page["access_token"]
+    print("  -> Luu la TRANG THU 2 (Trang cu giu nguyen).")
+else:
+    cfg["fb_page_id"], cfg["fb_page_token"] = page["id"], page["access_token"]
 with open(PATH, "w", encoding="utf-8") as f:
     json.dump(cfg, f, ensure_ascii=False, indent=1)
 input(f"\nDA LUU Trang '{page['name']}'. Bao lai de em cho dang thu. Bam Enter de dong.")

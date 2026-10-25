@@ -9,8 +9,19 @@ on:
     - cron: "0 9 * * *"            # 16h gio VN: video
     - cron: "0 10 * * *"           # 17h gio VN: anh
     - cron: "0 13 * * *"           # 20h gio VN: video
+    # 25/10 Trang 2 "Cuoi Moi Ngay Sale Hoi": cung lich, LECH 30 phut (phut 30 = Trang 2), dang file SO CHAN
+    - cron: "30 2 * * *"           # 9h30: anh
+    - cron: "30 5 * * *"           # 12h30: video
+    - cron: "30 9 * * *"           # 16h30: video
+    - cron: "30 10 * * *"          # 17h30: anh
+    - cron: "30 13 * * *"          # 20h30: video
   workflow_dispatch:
     inputs:
+      trang:
+        description: "Trang nao (1 = San Deal, 2 = Cuoi Moi Ngay Sale Hoi)"
+        type: choice
+        options: ["1", "2"]
+        default: "1"
       kieu:
         description: "Dang gi"
         type: choice
@@ -47,9 +58,12 @@ jobs:
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE2_ID: ${{ secrets.FB_PAGE2_ID }}
+          FB_PAGE2_TOKEN: ${{ secrets.FB_PAGE2_TOKEN }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          KIEU: ${{ github.event_name == 'workflow_dispatch' && inputs.kieu || ((github.event.schedule == '0 2 * * *' || github.event.schedule == '0 10 * * *') && 'anh' || 'video') }}
+          TRANG: ${{ github.event_name == 'workflow_dispatch' && inputs.trang || (startsWith(github.event.schedule, '30 ') && '2' || '1') }}
+          KIEU: ${{ github.event_name == 'workflow_dispatch' && inputs.kieu || ((endsWith(github.event.schedule, ' 2 * * *') || endsWith(github.event.schedule, ' 10 * * *')) && 'anh' || 'video') }}
           AN: ${{ inputs.an && '1' || '' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
         run: python dang_trang.py

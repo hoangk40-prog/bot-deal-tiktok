@@ -1486,11 +1486,13 @@ def main():
     channel = os.environ.get("TELEGRAM_CHANNEL_ID", "") or str(local.get("telegram_channel_id", "")).strip()   # kenh: bot tu dang tung san pham
     fb_page = os.environ.get("FB_PAGE_ID", "") or str(local.get("fb_page_id", "")).strip()       # Trang Facebook dang thang (nhap_facebook.bat)
     fb_token = os.environ.get("FB_PAGE_TOKEN", "") or str(local.get("fb_page_token", "")).strip()
+    fb2_page = os.environ.get("FB_PAGE2_ID", "") or str(local.get("fb_page2_id", "")).strip()   # 25/10 Trang 2 "Cuoi Moi Ngay Sale Hoi"
+    fb2_token = os.environ.get("FB_PAGE2_TOKEN", "") or str(local.get("fb_page2_token", "")).strip()
     make_hook = os.environ.get("MAKE_WEBHOOK", "") or str(local.get("make_webhook", "")).strip()   # Trang Facebook qua Make.com
     win_chat = (os.environ.get("TELEGRAM_WIN_CHAT_ID", "").strip() or str(local.get("telegram_win_chat_id", "")).strip()
                 or chat)                       # nhom rieng chi nhan 'San pham win'; chua co thi gui chat rieng
     if os.environ.get("CHI_RIENG") == "1":             # nut 'Chay ngay' tren may: chi gui chat rieng (sent.json tren may cu hon GitHub -> tranh dang trung kenh/Trang)
-        channel = fb_page = fb_token = make_hook = ""
+        channel = fb_page = fb_token = make_hook = fb2_page = fb2_token = ""
     if not token or (not dry and not (bot and chat)):
         sys.exit("Thieu token (ACCESSTRADE_TOKEN / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID). Tren may: bam dup nhap_telegram.bat.")
     if not cfg["merchants"] and not cfg["tiktok"]:
@@ -1679,6 +1681,20 @@ def main():
             meta["fb_fail"] = meta.get("fb_fail", 0) + 1
             if meta["fb_fail"] == 3:
                 safe_alert(bot, chat, f"⚠️ Đăng Trang Facebook lỗi 3 lần liên tiếp:\n{str(e)[:250]}", dry)
+    # Trang 2: MON KHAC Trang 1 (mon thu 2 cua lan chay), han muc rieng (meta "fb_page2")
+    fb2_item = next((x for x in sent_items if x.get("image") and x.get("aff") and x is not fb_item), None)
+    if fb2_page and fb2_token and fb2_item and fb_quota_ok({"fb_make": meta.get("fb_page2")}, cfg, n):
+        try:
+            if dry:
+                print("[chay thu] se dang Trang 2:", fb2_item.get("title", "")[:60])
+            else:
+                fb_post(fb2_page, fb2_token, fb2_item)
+            fb = meta.get("fb_page2") or {}
+            cnt = int(fb.get("count", 0)) + 1 if fb.get("date") == n.date().isoformat() else 1
+            meta["fb_page2"] = {"date": n.date().isoformat(), "count": cnt, "last": ts}
+            print(f"Da dang Trang 2 (bai {cnt}/{cfg['fb_max_per_day']} hom nay)")
+        except Exception as e:
+            print("LOI dang Trang 2:", str(e)[:200])
     if msg:
         send_err = None
         try:

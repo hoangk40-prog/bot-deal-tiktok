@@ -37,6 +37,8 @@ jobs:
           MAKE_WEBHOOK: ${{ secrets.MAKE_WEBHOOK }}
           FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE2_ID: ${{ secrets.FB_PAGE2_ID }}
+          FB_PAGE2_TOKEN: ${{ secrets.FB_PAGE2_TOKEN }}
           FORCE: ${{ github.event_name == 'workflow_dispatch' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
         run: python auto_deals.py
