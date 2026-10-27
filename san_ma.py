@@ -18,8 +18,6 @@ import re
 import sys
 from io import BytesIO
 
-import requests
-
 import auto_deals as ad
 
 sys.stdout.reconfigure(encoding="utf-8")
@@ -193,6 +191,7 @@ def the_anh(mas, hom_nay, kieu=""):
 
 # ---------------------------------------------------------------- gui
 def gui_telegram(bot, chat, anh, text):
+    import requests                          # nap muon: zalo_bot (may ban) chi can phan soan tin
     if anh:
         r = requests.post(f"https://api.telegram.org/bot{bot}/sendPhoto", timeout=60,
                           data={"chat_id": chat}, files={"photo": ("san_ma.jpg", anh, "image/jpeg")})
@@ -202,6 +201,7 @@ def gui_telegram(bot, chat, anh, text):
 
 
 def gui_fb(page, token, anh, text):
+    import requests
     if anh:
         r = requests.post(f"https://graph.facebook.com/v21.0/{page}/photos", timeout=120,
                           files={"source": ("san_ma.jpg", anh, "image/jpeg")}, data={"caption": text, "access_token": token})

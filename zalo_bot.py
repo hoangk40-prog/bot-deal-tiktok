@@ -235,6 +235,57 @@ def pick_deals():
     return items, state, n
 
 
+def san_ma_zalo(state, n):
+    """28/10 anh duyet: tin "San ma Shopee hom nay" (san_ma.py) them vao nhom Zalo - luot dau tu 11h (lich 12h), 5 ma cho gon.
+    Toi truoc ngay doi (10/11, 11/12) luot tu 19h (lich 20h) gui them tin "Chuan bi 0h". Tat: config.json "zalo_san_ma": false.
+    Tra (khoa trang thai, chu, duong dan anh) hoac None."""
+    if not ad.load_config().get("zalo_san_ma", True):
+        return None
+    import san_ma
+    hom_nay = n.date()
+    mai_doi, con = san_ma.ngay_doi_toi(hom_nay)
+    if con == 1 and n.hour >= 19 and state.get("san_ma_chuan_bi") != hom_nay.isoformat():
+        kieu, khoa = "chuan_bi", "san_ma_chuan_bi"
+    elif n.hour >= 11 and state.get("san_ma_ngay") != hom_nay.isoformat():
+        kieu, khoa = "", "san_ma_ngay"
+    else:
+        return None
+    try:
+        offers = ad.fetch_offers(ad.get_token(), "shopee", limit=50, pages=12)
+        mas = san_ma.chon_ma(offers, {"da_dang": state.get("san_ma_da_dang", {})}, hom_nay, 5)
+    except Exception as e:
+        log("San ma: lay ma loi:", str(e)[:120])
+        return None
+    if len(mas) < 3:
+        return None
+    os.makedirs(OUT_DIR, exist_ok=True)
+    path = os.path.join(OUT_DIR, "san_ma.jpg")
+    anh = san_ma.the_anh(mas, hom_nay, kieu)
+    if anh:
+        with open(path, "wb") as f:
+            f.write(anh)
+    text = san_ma.soan_tin(mas, hom_nay, kieu).replace("Theo dõi kênh", "Ghim nhóm")
+    return khoa, text, path if anh else None, [m["id"] for m in mas]
+
+
+def gui_san_ma(page, state, n, sm):
+    """Anh the + tin chu (2 tin) vao nhom dang mo, gui xong moi ghi trang thai."""
+    khoa, text, pic, ids = sm
+    if pic:
+        paste_image(page, pic)
+        press_send(page)
+        human_pause(3, 5)
+    send_text(page, text)
+    press_send(page)
+    state[khoa] = n.date().isoformat()
+    for i in ids:
+        state.setdefault("san_ma_da_dang", {})[i] = n.date().isoformat()
+    keep = (n.date() - datetime.timedelta(days=30)).isoformat()
+    state["san_ma_da_dang"] = {k: v for k, v in state["san_ma_da_dang"].items() if v >= keep}
+    ad.save_json(STATE, state)
+    log("Da gui tin san ma Shopee")
+
+
 def save_done(state, items, n):
     for it in items:
         state["products"][it.get("key") or "tt|" + it["id"]] = {"t": n.isoformat()}
@@ -396,12 +447,17 @@ def dang():
         time.sleep(wait)
 
     items, state, n = pick_deals()
-    if not items:
+    sm = san_ma_zalo(state, n)
+    if sm:
+        log(f"Luot nay gui them tin san ma Shopee ({sm[0]})")
+        with open(os.path.join(OUT_DIR, "tin_san_ma.txt"), "w", encoding="utf-8") as f:
+            f.write(sm[1])
+    if not items and not sm:
         log("Khong co deal moi -> bo qua lan nay.")
         return
     os.makedirs(OUT_DIR, exist_ok=True)
     kieu = str(ad.load_config().get("zalo_kieu", "tung_mon"))
-    jpeg = ad.make_collage(items)                 # kieu tung_mon van lam anh ghep de cua so Bot Zalo xem lai
+    jpeg = ad.make_collage(items) if items else None   # kieu tung_mon van lam anh ghep de cua so Bot Zalo xem lai
     img_path = os.path.join(OUT_DIR, "anh_ghep.jpg")
     if jpeg:
         with open(img_path, "wb") as f:
@@ -445,7 +501,9 @@ def dang():
             TARGET["name"] = nhom
             log(f"Da mo nhom '{nhom}'")
             if dry:                           # dien tin vao o soan de xem, chup man hinh, xoa di - KHONG gui
-                if kieu == "gop" or not pics[0]:
+                if sm and not items:
+                    send_text(page, sm[1])
+                elif kieu == "gop" or not pics[0]:
                     send_text(page, text if kieu == "gop" else caps[0])
                 else:                         # tung mon: dan anh + chu thich, chup hop mo ta truoc khi Luu
                     paste_image(page, pics[0])
@@ -457,7 +515,9 @@ def dang():
                 page.keyboard.press("Delete")
                 log("DRY_RUN: khong gui. Anh chup man hinh: xem_thu.png")
                 return
-            if kieu == "gop":
+            if not items:
+                pass
+            elif kieu == "gop":
                 if jpeg:
                     send_image(page, img_path)
                 send_text(page, text)
@@ -479,6 +539,11 @@ def dang():
                     log(f"  da gui mon {i + 1}/{len(items)}")
                     page.screenshot(path=os.path.join(OUT_DIR, f"sau_mon_{i + 1}.png"))   # de truy loi neu nhay nhom
                     assert_chat(page, f"sau mon {i + 1}")
+            if sm:
+                if items:
+                    human_pause(30, 60)
+                gui_san_ma(page, state, n, sm)
+                assert_chat(page, "sau tin san ma")
             page.screenshot(path=os.path.join(OUT_DIR, "da_gui.png"))
             log(f"DA DANG {len(items)} mon vao nhom '{nhom}' (kieu {kieu})")
         except Exception as e:
