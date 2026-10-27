@@ -8,7 +8,8 @@ Moi lan chay dang 1 file SO NHO NHAT co dong tieu de `so | tieu de` -> chuyen sa
 Video doc (cao > rong) <= 90 giay -> Reels, con lai -> video thuong. Anh -> /photos.
 
 27/10 TU DAT SO: anh bo file ten gi cung duoc vao thu muc cho -> bot (`tu_dat_so`) dat so tiep sau so lon nhat, Gemini xem
-video/anh viet tieu de, ghi them dong vao tieu_de*.txt. File trung so voi file da dang -> doi so moi; trung HET (md5) -> bo qua.
+video/anh viet tieu de, ghi them dong vao tieu_de*.txt. Ten trung file bot da dang / 2 file cung so -> doi so moi;
+giong HET file da dang (md5) -> bo qua.
 
 Bien moi truong: KIEU=video|anh, GOOGLE_SA_JSON, FB_PAGE_ID, FB_PAGE_TOKEN, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY,
   DRY_RUN=1 (chi in ra se dang gi), AN=1 (dang bai an roi xoa ngay, khong chuyen file, khong ghi trang thai).
@@ -298,7 +299,8 @@ def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3):
             bo.add(f["name"])                                  # ban chep y het video da dang -> khong dang lai
             print(f"  {f['name']}: GIONG HET 1 file da dang -> bo qua (anh xoa giup)")
             continue
-        trung = n is not None and (n in so_xong or f["name"] in done_all or n in thay)
+        # KHONG coi trung so voi thu muc da dang: 25/10 anh thay kho moi dung lai so 1-75 (da dang con 49_16x9 cu)
+        trung = n is not None and (f["name"] in done_all or n in thay)
         if n is not None and not trung and n in tieu_de:
             thay.add(n)
             continue                                           # binh thuong: co so, co tieu de
