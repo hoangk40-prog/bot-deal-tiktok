@@ -594,6 +594,8 @@ def pick_tiktok(items, state, cfg, n):
             score = math.log10(it["sold"] + 10) * math.sqrt(max(it["pct"], 1)) * (1.5 if it["official"] else 1)
             if it["orig"]:
                 score *= 1 + min(1 - it["price"] / it["orig"], 0.6)            # dang giam gia that: uu tien (giam 30% -> x1,3)
+            # 28/10 anh thay bot toan lay hang hoi dat -> uu tien hang re (de chot don, nguoi mua de bam mua)
+            score *= 1.4 if it["price"] < 100_000 else 1.2 if it["price"] < 150_000 else 1
             cands.append((score, it))
     cands.sort(key=lambda c: -c[0])
     out, per_cat, shops = [], Counter(), set()
