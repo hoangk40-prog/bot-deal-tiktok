@@ -162,10 +162,74 @@ def collect(n=None):
                    "luot_chay_hom_nay": sum(1 for s in meta.get("slots_done", []) if s.startswith(d + "@")),
                    "bai_fb_hom_nay": fb.get("count", 0) if fb.get("date") == d else 0,
                    "loi_lien_tiep": meta.get("fail_count", 0)}
+    t2 = trang.get("trang2") or {}
     data["dang_trang"] = {"video_da_dang": len((trang.get("da_dang") or {}).get("video", [])),
                           "anh_da_dang": len((trang.get("da_dang") or {}).get("anh", [])),
-                          "loi_lien_tiep": trang.get("loi_lien_tiep", 0)}
+                          "loi_lien_tiep": trang.get("loi_lien_tiep", 0),
+                          "trang2_video_da_dang": len((t2.get("da_dang") or {}).get("video", [])),
+                          "trang2_anh_da_dang": len((t2.get("da_dang") or {}).get("anh", [])),
+                          "trang2_loi_lien_tiep": t2.get("loi_lien_tiep", 0)}
+
+    # --- So nguoi theo doi 2 Trang FB (27/10, thay Metricool) - ma Trang co san
+    for sfx in ("", "2"):
+        page, tok = secret(f"FB_PAGE{sfx}_ID", f"fb_page{sfx}_id"), secret(f"FB_PAGE{sfx}_TOKEN", f"fb_page{sfx}_token")
+        if not (page and tok):
+            continue
+        try:
+            q = urllib.parse.urlencode({"fields": "name,followers_count,fan_count", "access_token": tok})
+            r = json.loads(urllib.request.urlopen(f"https://graph.facebook.com/v21.0/{page}?{q}", timeout=30).read())
+            data.setdefault("trang_fb", {})[sfx or "1"] = {"ten": r.get("name"), "theo_doi": r.get("followers_count"),
+                                                           "thich": r.get("fan_count")}
+        except Exception as e:
+            data["loi"].append(f"Trang FB {sfx or '1'}: {str(e)[:100]}")
     return data
+
+
+# ---------------------------------------------------------------- 27/10 AI nhan xet + cach kiem tien moi (Gemini, mien phi)
+VE_ANH = ("Anh Hoàng ở Việt Nam, làm kiếm tiền online một mình, tận dụng bot tự động (không có nhân viên, vốn ít). Đang có: "
+          "1) bot săn deal TikTok Shop tiếp thị liên kết qua Accesstrade (hoa hồng 5–8%) gửi kênh Telegram, nhóm Zalo, 2 Trang Facebook; "
+          "chờ Shopee duyệt Open API. 2) 2 Trang Facebook đăng video/ảnh hài mỗi ngày (mới lập, rất ít người theo dõi). "
+          "3) vài kênh YouTube kể chuyện (Nhật, Hàn) làm bằng tool tự dựng video AI. 4) bán tool làm video AI theo tháng cho người khác.")
+
+
+def ai_nhan_xet(data, truoc):
+    """Gemini doc so lieu hom nay + 7 ngay truoc -> nhan xet + viec nen lam + 2-3 cach kiem tien / xu huong moi.
+    Co Google Search thi dung (xu huong that), loi thi bo tim kiem. Khong khoa / loi het -> '' (bao cao gui nhu cu)."""
+    key = ad.gemini_key()
+    if not key:
+        return ""
+    gon = lambda d: {k: v for k, v in d.items() if k not in ("ai", "loi")}
+    cu = [d.get("ai", "")[-600:] for d in truoc[-3:] if d.get("ai")]
+    prompt = (VE_ANH + "\n\nSỐ LIỆU HÔM NAY (JSON):\n" + json.dumps(gon(data), ensure_ascii=False) +
+              "\n\n7 NGÀY TRƯỚC:\n" + json.dumps([gon(d) for d in truoc[-7:]], ensure_ascii=False) +
+              ("\n\nGỢI Ý MẤY HÔM TRƯỚC (đừng lặp lại):\n" + "\n---\n".join(cu) if cu else "") +
+              "\n\nViết bằng tiếng Việt dễ hiểu, không thuật ngữ, ngắn gọn, KHÔNG dùng markdown (không dấu *, #). Đúng 2 phần:\n"
+              "🧠 Nhận xét số liệu\n- 2–3 gạch đầu dòng: xu hướng đáng chú ý (tăng/giảm, chỗ nào đang tắc) và NÊN LÀM GÌ ngay, cụ thể. "
+              "Chỉ dựa trên số liệu có thật ở trên, không bịa số.\n"
+              "💡 Cách kiếm tiền / xu hướng mới\n- 2–3 gạch đầu dòng, mỗi ý: tên cách + vì sao hợp với anh + bước làm đầu tiên. "
+              "Ưu tiên cái tận dụng được bot/tool anh đang có, ít vốn, hợp pháp, không lách luật nền tảng, đang lên ở Việt Nam. "
+              "Không hứa thu nhập. Mỗi gạch đầu dòng TỐI ĐA 2 câu ngắn, cả bài dưới 900 ký tự.")
+    for tim in (True, False):
+        body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.7}}
+        if tim:
+            body["tools"] = [{"google_search": {}}]
+        for model in ad.GEMINI_MODELS[:2] if tim else ad.GEMINI_MODELS:   # tim kiem hay het luot free (429) -> thu it
+            try:
+                req = urllib.request.Request(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}",
+                    data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=90) as r:
+                    j = json.loads(r.read().decode("utf-8"))
+                t = "".join(p.get("text", "") for p in j["candidates"][0]["content"]["parts"]).strip()
+            except Exception as e:
+                print(f"[AI nhan xet] {model}{' +tim' if tim else ''} loi: {str(e)[:100].replace(key, '***')}")
+                continue
+            t = "\n".join(ln.rstrip() for ln in t.replace("**", "").replace("##", "").splitlines() if ln.strip())
+            t = t.replace("\n💡", "\n\n💡")
+            if "💡" in t or len(t) > 200:
+                print(f"[AI nhan xet] {model}{' +tim' if tim else ''}: {len(t)} ky tu")
+                return t[:1800]
+    return ""
 
 
 def load_history():
@@ -242,14 +306,23 @@ def build_text(data, prev):
         for ten, so, moi_ngay in (("video", vc, 2), ("ảnh", ac, 1)):
             if so is not None and so < moi_ngay * 5:
                 goi_y.append(f"Chỉ còn {so} {ten} chờ đăng (~{so // moi_ngay} ngày) → bổ sung thêm {ten} + dòng tiêu đề.")
-    if tr.get("loi_lien_tiep"):
-        L.append(f"- ⚠️ Bot đăng Trang lỗi {tr['loi_lien_tiep']} lần liên tiếp")
+    if "trang2_video_da_dang" in ptr:
+        L.append(f"- Trang 2 hôm nay: {tr['trang2_video_da_dang'] - ptr['trang2_video_da_dang']} video, "
+                 f"{tr['trang2_anh_da_dang'] - ptr['trang2_anh_da_dang']} ảnh")
+    for so, tf in sorted((data.get("trang_fb") or {}).items()):
+        cu = ((prev.get("trang_fb") or {}).get(so) or {}).get("theo_doi")
+        L.append(f"- {tf.get('ten') or 'Trang ' + so}: {tf.get('theo_doi')} người theo dõi{delta(tf.get('theo_doi'), cu)}")
+    for k, ten in (("loi_lien_tiep", "Trang 1"), ("trang2_loi_lien_tiep", "Trang 2")):
+        if tr.get(k):
+            L.append(f"- ⚠️ Bot đăng {ten} lỗi {tr[k]} lần liên tiếp")
     L.append("")
 
     if goi_y:
         L.append("👉 Việc nên làm")
         L += [f"- {g}" for g in goi_y]
         L.append("")
+    if data.get("ai"):
+        L += [data["ai"], ""]
     if data.get("loi"):
         L.append("⚠️ Lỗi khi lấy số liệu")
         L += [f"- {e}" for e in data["loi"]]
@@ -282,6 +355,7 @@ def tu_dong():
     data = collect()
     hist = load_history()
     older = [k for k in sorted(hist) if k < data["ngay"]]
+    data["ai"] = ai_nhan_xet(data, [hist[k] for k in older])
     text = build_text(data, hist[older[-1]] if older else {})
     print(text)
     if dry:

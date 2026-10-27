@@ -35,6 +35,11 @@ jobs:
           TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
           TELEGRAM_REPORT_CHAT_ID: ${{ secrets.TELEGRAM_REPORT_CHAT_ID }}
           GOOGLE_SA_JSON: ${{ secrets.GOOGLE_SA_JSON }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # 27/10: AI nhan xet + cach kiem tien moi
+          FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_PAGE2_ID: ${{ secrets.FB_PAGE2_ID }}
+          FB_PAGE2_TOKEN: ${{ secrets.FB_PAGE2_TOKEN }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
         run: python bao_cao_ngay.py tu_dong
       - name: Luu lich su bao cao

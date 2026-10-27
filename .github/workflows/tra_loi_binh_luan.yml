@@ -1,0 +1,42 @@
+# Tra loi binh luan 2 Trang FB bang mau (26/10 viet, 27/10 dua len GitHub). Cung Secrets voi workflow dang Trang.
+name: Tra loi binh luan Trang Facebook
+on:
+  schedule:
+    - cron: "20 * * * *"        # moi gio, phut 20 (script tu bo qua ngoai 7h-23h gio VN)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 = chi in ra, khong tra loi that"
+        default: "1"
+concurrency: tra_loi_binh_luan
+permissions:
+  contents: write
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    env:
+      FB_PAGE_ID: ${{ secrets.FB_PAGE_ID }}
+      FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+      FB_PAGE2_ID: ${{ secrets.FB_PAGE2_ID }}
+      FB_PAGE2_TOKEN: ${{ secrets.FB_PAGE2_TOKEN }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      KENH_LINK: ${{ secrets.KENH_LINK || 'https://t.me/sandealgiatot_moingay' }}   # nguoi hoi mua -> kenh deal Telegram
+      DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install requests
+      - name: Trang 1
+        run: python tra_loi_binh_luan.py
+      - name: Trang 2
+        if: env.FB_PAGE2_ID != ''
+        env: { TRANG: "2" }
+        run: python tra_loi_binh_luan.py
+      - name: Luu trang thai
+        if: env.DRY_RUN != '1'
+        run: |
+          git config user.name "bot"; git config user.email "bot@users.noreply.github.com"
+          git add tra_loi_binh_luan.json 2>/dev/null || true
+          git diff --cached --quiet || (git commit -q -m "tra loi binh luan: cap nhat trang thai" && git pull --rebase -q && git push)
