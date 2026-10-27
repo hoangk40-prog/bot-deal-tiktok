@@ -204,5 +204,63 @@
    "anh_da_dang": 7,
    "loi_lien_tiep": 1
   }
+ },
+ "2026-10-27": {
+  "ngay": "2026-10-27",
+  "luc": "23:17",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "con_thieu_de_rut_tien": 200000.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "video_cho": 61,
+   "video_da_dang": 21,
+   "anh_cho": 33,
+   "anh_da_dang": 16
+  },
+  "bot": {
+   "mon_gui_hom_nay": 32,
+   "luot_chay_hom_nay": 12,
+   "bai_fb_hom_nay": 2,
+   "loi_lien_tiep": 0
+  },
+  "dang_trang": {
+   "video_da_dang": 10,
+   "anh_da_dang": 9,
+   "loi_lien_tiep": 1,
+   "trang2_video_da_dang": 8,
+   "trang2_anh_da_dang": 5,
+   "trang2_loi_lien_tiep": 0
+  },
+  "trang_fb": {
+   "1": {
+    "ten": "Săn Deal Giá Tốt Mỗi Ngày",
+    "theo_doi": 7,
+    "thich": 7
+   },
+   "2": {
+    "ten": "Cười Mỗi Ngày Sale Hời",
+    "theo_doi": 4,
+    "thich": 4
+   }
+  },
+  "ai": "🧠 Nhận xét số liệu\n- Bot săn deal và đăng bài tự động chạy đều với 32 món/ngày, nhưng chưa phát sinh doanh số Accesstrade do lượt theo dõi quá ít (Telegram chỉ 2 người, hai trang Facebook có 7 và 4 người).\n- Đăng bài lên Trang Facebook 1 đang báo 1 lỗi liên tiếp, anh cần kiểm tra lại token hoặc quyền tài khoản ngay để tránh gián đoạn.\n- Kho video và ảnh chờ còn rất nhiều, anh nên chủ động mang các video hài hay nhất chia sẻ vào các hội nhóm Facebook lớn để kéo lượt xem tự nhiên cho trang.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Làm Reels chia sẻ mẹo tạo video AI: Cách này tận dụng đúng tool AI anh có để thu hút người muốn làm video tự động mua tool. Bước đầu tiên là dùng tool làm clip 30 giây quay lại cảnh tạo video tự động rồi đăng lên Facebook Reels kèm link tư vấn.\n- Dùng tool AI tạo video review hàng TikTok Shop: Video ngắn AI thu hút lượt xem tốt hơn nhiều so với bài đăng ảnh deal tĩnh thông thường. Bước đầu tiên là tải ảnh các sản phẩm bán chạy trên TikTok Shop, cho vào tool dựng thành video ngắn rồi gắn link tiếp thị."
  }
 }
