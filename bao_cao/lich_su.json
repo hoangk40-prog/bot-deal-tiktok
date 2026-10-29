@@ -320,5 +320,63 @@
    }
   },
   "ai": "🧠 Nhận xét số liệu\n- Hệ thống bot chạy rất mượt mà không gặp lỗi, hai trang Facebook đã nhích nhẹ thêm 1 lượt theo dõi nhưng kho bài chờ đang vơi dần.\n- Doanh thu Accesstrade vẫn bằng 0 do nhóm Telegram chỉ có 2 người và các trang Facebook còn quá mới nên bài đăng deal chưa có người xem.\n- Nên làm ngay: Kiểm tra kho ảnh và video để bổ sung thêm nội dung mới, đồng thời thử gắn link deal ở phần bình luận của các bài video hài thay vì đăng bài deal riêng lẻ.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Kênh TikTok/Reels làm phim hoạt hình AI hài ngắn: Anh có sẵn tool tự dựng video và kho nội dung hài hước nên rất dễ thu hút lượt xem tự nhiên từ người dùng trẻ. Bước đầu tiên là lấy 1 video hài hay nhất trong hàng chờ, chỉnh theo khung dọc 9:16 rồi đăng lên TikTok kèm link deal ở phần tiểu sử.\n- Kênh Shorts kể chuyện ma mị, tâm sự bằng AI: Tận dụng đúng công nghệ làm video kể chuyện Nhật Hàn anh đang có để đánh vào tệp người xem Việt Nam thích nghe truyện ngắn ban đêm. Bước đầu tiên là tạo 1 kịch bản AI ngắn 60 giây về chủ đề ly kỳ và cho tool tự xuất video đăng thử nghiệm."
+ },
+ "2026-10-29": {
+  "ngay": "2026-10-29",
+  "luc": "23:25",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "con_thieu_de_rut_tien": 200000.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "video_cho": 59,
+   "video_da_dang": 33,
+   "anh_cho": 25,
+   "anh_da_dang": 24
+  },
+  "bot": {
+   "mon_gui_hom_nay": 32,
+   "luot_chay_hom_nay": 12,
+   "bai_fb_hom_nay": 2,
+   "loi_lien_tiep": 0
+  },
+  "dang_trang": {
+   "video_da_dang": 16,
+   "anh_da_dang": 13,
+   "loi_lien_tiep": 0,
+   "trang2_video_da_dang": 14,
+   "trang2_anh_da_dang": 9,
+   "trang2_loi_lien_tiep": 0
+  },
+  "trang_fb": {
+   "1": {
+    "ten": "Săn Deal Giá Tốt Mỗi Ngày",
+    "theo_doi": 9,
+    "thich": 9
+   },
+   "2": {
+    "ten": "Cười Mỗi Ngày Sale Hời",
+    "theo_doi": 6,
+    "thich": 6
+   }
+  },
+  "ai": "🧠 Nhận xét số liệu\n- Hai trang Facebook tăng nhẹ thêm 1 người theo dõi (lên 9 và 6), bot chạy tốt không lỗi nhưng hoa hồng vẫn bằng 0 và Telegram đứng yên ở 2 người.\n- Bài đăng tự động chưa tạo ra đơn hàng vì quá thiếu lượt xem thật, anh cần ưu tiên tìm người xem hơn là chỉ phụ thuộc vào bot.\n- Anh nên dùng hai trang Facebook đi bình luận tương tác ở các bài viết hot trên mạng để kéo người dùng thật về trang ngay.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Tóm tắt phim bằng AI đăng Shorts: Tận dụng tool AI có sẵn đánh vào thói quen thích xem tóm tắt phim của người Việt. Bước đầu là lấy một phim ngắn hot, dùng tool dịch lời thoại tiếng Việt rồi xuất video đăng thử.\n- Tặng mẫu AI miễn phí để bán tool: Tận dụng tool sẵn có để tiếp cận đúng người làm nội dung mà không tốn chi phí. Bước đầu là chia sẻ 20 phông nền AI miễn phí vào các nhóm sáng tạo kèm link dùng thử tool."
  }
 }
