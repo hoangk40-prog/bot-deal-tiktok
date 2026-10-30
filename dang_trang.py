@@ -179,11 +179,19 @@ def tg_alert(text):
 
 
 # ---------------------------------------------------------------- chon file
+SO_RE = re.compile(r"\s*(\d{1,4})(?!\d)")   # so thu tu toi da 4 chu so: ten kieu ngay `261028_1025_07_...` (tab 7) KHONG phai so thu tu (30/10)
+
+
+def so_dau(name):
+    m = SO_RE.match(name or "")
+    return int(m.group(1)) if m else None
+
+
 def titles(txt):
     """Dong `so | tieu de` -> {so: tieu de}."""
     out = {}
     for line in txt.splitlines():
-        m = re.match(r"\s*(\d+)\s*\|\s*(.+)", line)
+        m = re.match(r"\s*(\d{1,4})\s*\|\s*(.+)", line)
         if m and m.group(2).strip():
             out[int(m.group(1))] = m.group(2).strip()
     return out
@@ -193,10 +201,10 @@ def pick(files, tieu_de, done, bo=()):
     """File so nho nhat (so dau ten: 7.jpg -> 7, 1_16x9.mp4 -> 1) co dong tieu de, chua tung dang, khong nam trong `bo`."""
     ok = []
     for f in files:
-        m = re.match(r"(\d+)", f["name"])
-        if m and int(m.group(1)) in tieu_de and f["name"] not in done and f["name"] not in bo:
-            ok.append((int(m.group(1)), f))
-    skipped = [f["name"] for f in files if not re.match(r"\d+", f["name"]) or int(re.match(r"\d+", f["name"]).group()) not in tieu_de]
+        n = so_dau(f["name"])
+        if n is not None and n in tieu_de and f["name"] not in done and f["name"] not in bo:
+            ok.append((n, f))
+    skipped = [f["name"] for f in files if so_dau(f["name"]) not in tieu_de]
     if skipped:
         print("  Bo qua (khong co so / chua co dong tieu de):", ", ".join(skipped[:10]))
     return min(ok, key=lambda x: x[0]) if ok else None
@@ -206,11 +214,6 @@ def pick(files, tieu_de, done, bo=()):
 GEMINI = "https://generativelanguage.googleapis.com"
 GEMINI_MODELS = ["gemini-3.5-flash", "gemini-flash-latest", "gemini-3.7-flash", "gemini-flash-lite-latest"]
 CO_DAU = re.compile(r"[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ]", re.I)
-
-
-def so_dau(name):
-    m = re.match(r"\s*(\d+)", name or "")
-    return int(m.group(1)) if m else None
 
 
 def gemini_upload(key, path, mime):
@@ -270,6 +273,7 @@ def ai_tieu_de(path, kieu, mau):
                 print(f"  [AI tieu de] {model} loi: {str(e)[:120].replace(key, '***')}")
                 continue
             t = " ".join(str(t).replace("|", "-").split())
+            t = re.sub(r"^\d+\s*[-:.]\s*", "", t)                  # AI chep ca so thu tu cua dong mau ("261034 - ...")
             if CO_DAU.search(t) and 15 <= len(t) <= 250:
                 print(f"  [AI tieu de] {model}: {t}")
                 return t
@@ -310,7 +314,7 @@ def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3):
     if not can:
         return 0, bo
     print(f"Tu dat so: {len(can)} file can lo ({', '.join(f['name'] for f, _ in can[:8])}), luot nay lam toi da {toi_da}")
-    lo, mau = 0, [ln for ln in txt.splitlines() if re.match(r"\s*\d+\s*\|", ln)][-6:]
+    lo, mau = 0, [ln for ln in txt.splitlines() if re.match(r"\s*\d{1,4}\s*\|", ln)][-6:]
     for f, n in can[:toi_da]:
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "f" + os.path.splitext(f["name"])[1].lower())
@@ -390,7 +394,7 @@ def main():
     tieu_de = titles(txt)
     files = drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,size,mimeType,videoMediaMetadata")
     print(f"{k['cho']}: {len(files)} file, {len(tieu_de)} dong tieu de")
-    files = [f for f in files if not re.match(r"\d+", f["name"]) or int(re.match(r"\d+", f["name"]).group()) % 2 == chan]
+    files = [f for f in files if so_dau(f["name"]) is None or so_dau(f["name"]) % 2 == chan]
     if bo:
         print("  Bo qua (trung / loi nhieu lan):", ", ".join(sorted(bo)))
     got = pick(files, tieu_de, done, bo)
