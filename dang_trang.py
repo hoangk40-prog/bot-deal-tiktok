@@ -179,7 +179,7 @@ def tg_alert(text):
 
 
 # ---------------------------------------------------------------- chon file
-SO_RE = re.compile(r"\s*(\d{1,4})(?!\d)")   # so thu tu toi da 4 chu so: ten kieu ngay `261028_1025_07_...` (tab 7) KHONG phai so thu tu (30/10)
+SO_RE = re.compile(r"\s*(\d{1,3})(?!\d)")   # so thu tu toi da 3 chu so: ten kieu ngay `261028_1025_07_...` (tab 7), `1027 (1).mp4` KHONG phai so thu tu (30/10)
 
 
 def so_dau(name):
@@ -191,7 +191,7 @@ def titles(txt):
     """Dong `so | tieu de` -> {so: tieu de}."""
     out = {}
     for line in txt.splitlines():
-        m = re.match(r"\s*(\d{1,4})\s*\|\s*(.+)", line)
+        m = re.match(r"\s*(\d{1,3})\s*\|\s*(.+)", line)
         if m and m.group(2).strip():
             out[int(m.group(1))] = m.group(2).strip()
     return out
@@ -314,7 +314,7 @@ def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3):
     if not can:
         return 0, bo
     print(f"Tu dat so: {len(can)} file can lo ({', '.join(f['name'] for f, _ in can[:8])}), luot nay lam toi da {toi_da}")
-    lo, mau = 0, [ln for ln in txt.splitlines() if re.match(r"\s*\d{1,4}\s*\|", ln)][-6:]
+    lo, mau = 0, [ln for ln in txt.splitlines() if re.match(r"\s*\d{1,3}\s*\|", ln)][-6:]
     for f, n in can[:toi_da]:
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, "f" + os.path.splitext(f["name"])[1].lower())
