@@ -31,7 +31,7 @@ FB_API = "https://graph.facebook.com/v21.0"
 FB_VIDEO_API = "https://graph-video.facebook.com/v21.0"
 DRIVE = "https://www.googleapis.com/drive/v3/files"
 FOLDER = "application/vnd.google-apps.folder"
-FOOTER = "👉 Theo dõi Trang để giải trí mỗi ngày nhé!"
+FOOTER = "👉 Theo dõi Trang để mỗi ngày ngẫm thêm một bài học đời."   # 01/11 2 Trang đổi sang thông điệp cuộc sống
 STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dang_trang.json")
 KIEU = {
     "video": {"goc": "Video Trang Facebook", "cho": "Video chờ đăng", "xong": "Video đã đăng", "tieu_de": "tieu_de.txt"},
@@ -254,11 +254,12 @@ def ai_tieu_de(path, kieu, mau):
         mime = {".png": "image/png", ".webp": "image/webp"}.get(ext, "image/jpeg")
         with open(path, "rb") as fh:
             media = {"inline_data": {"mime_type": mime, "data": base64.b64encode(fh.read()).decode()}}
-    loai = "video hài ngắn" if kieu == "video" else "ảnh hài"
-    prompt = (f"Đây là 1 {loai} sắp đăng lên Trang Facebook giải trí Việt Nam. Xem kỹ (nghe cả lời thoại nếu có) rồi viết 1 dòng "
+    loai = "video thông điệp cuộc sống" if kieu == "video" else "ảnh thông điệp cuộc sống"
+    prompt = (f"Đây là 1 {loai} sắp đăng lên Trang Facebook bài học cuộc sống Việt Nam. Xem kỹ (nghe cả lời đọc) rồi viết 1 dòng "
               "tiêu đề tiếng Việt CÓ DẤU, 10–22 chữ, gây tò mò, ĐÚNG nội dung (không bịa chi tiết không có), không tục tĩu, không "
-              "giật tít sai sự thật, hợp chuẩn cộng đồng Facebook; thêm 1 emoji hợp nội dung và 2–3 hashtag không dấu, cuối cùng là "
-              "#haihuoc #giaitri. Không dùng dấu |. Viết theo đúng kiểu các dòng mẫu sau:\n" + "\n".join(mau) +
+              "giật tít sai sự thật, hợp chuẩn cộng đồng Facebook, nói được bài học người xem nhận được; thêm 1 emoji hợp nội dung "
+              "và 2–3 hashtag không dấu, cuối cùng là #baihoccuocsong #thongdiep (KHÔNG dùng #haihuoc #giaitri). Không dùng dấu |. "
+              "Viết gần giống kiểu các dòng mẫu sau (đổi hashtag cuối như trên):\n" + "\n".join(mau) +
               '\nTrả JSON {"tieu_de": "..."}')
     body = {"contents": [{"parts": [media, {"text": prompt}]}], "generationConfig": {
         "temperature": 0.8, "responseMimeType": "application/json",
@@ -359,6 +360,14 @@ def main():
     kieu = (os.environ.get("KIEU") or "").strip().lower()
     if kieu not in KIEU:
         sys.exit("Thieu KIEU=video hoac KIEU=anh")
+    # 01/11 anh: thu muc anh trong -> luot anh dang VIDEO thay (anh bo anh vao thi luot do lai dang anh)
+    if dang(kieu) is False and kieu == "anh":
+        print("Khong co anh -> luot nay dang video thay.")
+        dang("video")
+
+
+def dang(kieu):
+    """Dang 1 file loai kieu. Tra False khi hang cho khong co file nao du dieu kien."""
     dry, an = os.environ.get("DRY_RUN") == "1", os.environ.get("AN") == "1"
     # 25/10 Trang thu 2 "Cuoi Moi Ngay Sale Hoi" (anh muon 2 Trang noi dung KHAC nhau): chung kho Drive,
     # Trang 1 chi dang file SO LE, Trang 2 chi dang SO CHAN -> khong bao gio trung. TRANG=2 dung FB_PAGE2_*.
@@ -400,9 +409,10 @@ def main():
     got = pick(files, tieu_de, done, bo)
     if not got:
         print("Khong co file nao du dieu kien -> bo qua lan nay.")
-        return
+        return False
     so, f = got
-    caption = f"{tieu_de[so]}\n\n{FOOTER}"
+    # 01/11: tieu de cu (viet luc con la Trang giai tri) -> doi hashtag cuoi theo chu de thong diep
+    caption = f"{tieu_de[so].replace('#haihuoc #giaitri', '#baihoccuocsong #thongdiep')}\n\n{FOOTER}"
     meta = f.get("videoMediaMetadata") or {}
     w, h, dur = int(meta.get("width", 0)), int(meta.get("height", 0)), int(meta.get("durationMillis", 0)) / 1000
     cach = "anh" if kieu == "anh" else ("reels" if h > w and 0 < dur <= 90 else "video")
