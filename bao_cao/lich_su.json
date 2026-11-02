@@ -556,5 +556,65 @@
    }
   },
   "ai": "🧠 Nhận xét số liệu\n- Tin vui là hôm nay đơn hàng Accesstrade đầu tiên đã về với 1 đơn TikTok CPS, mang lại doanh số 59 ngàn đồng và hoa hồng 189 đồng.\n- Hai trang Facebook vẫn rất ít tương tác khi trang Ngẫm Đời Mà Sống có 9 người theo dõi và Sống Chậm Nghĩ Sâu có 6 người theo dõi.\n- Anh cần tiếp tục duy trì bot săn deal và chủ động chia sẻ link sản phẩm vào các hội nhóm mua sắm để kéo thêm người xem thật.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Làm video giới thiệu sản phẩm bằng AI cho shop nhỏ nhờ tận dụng tool dựng video tự động sẵn có. Bước đầu là tạo 3 video mẫu sản phẩm hot rồi đăng bài chào dịch vụ trong các nhóm bán hàng online.\n- Kênh Shorts mẹo vặt gia đình bằng AI tận dụng tool sẵn có để làm clip chia sẻ mẹo hay kèm gắn link tiếp thị liên kết Accesstrade. Bước đầu là xuất clip mẹo vặt 60 giây đăng YouTube Shorts kèm link mua hàng."
+ },
+ "2026-11-02": {
+  "ngay": "2026-11-02",
+  "luc": "23:31",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 1,
+   "doanh_so": 59295.0,
+   "hoa_hong": 189.0,
+   "cho_duyet": 2,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {
+    "tiktok_cps": 1
+   }
+  },
+  "con_thieu_de_rut_tien": 199811.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "video_cho": 49,
+   "video_da_dang": 16,
+   "anh_cho": 0,
+   "anh_da_dang": 0
+  },
+  "bot": {
+   "mon_gui_hom_nay": 28,
+   "luot_chay_hom_nay": 12,
+   "bai_fb_hom_nay": 2,
+   "loi_lien_tiep": 0
+  },
+  "dang_trang": {
+   "video_da_dang": 30,
+   "anh_da_dang": 18,
+   "loi_lien_tiep": 0,
+   "trang2_video_da_dang": 28,
+   "trang2_anh_da_dang": 14,
+   "trang2_loi_lien_tiep": 0
+  },
+  "trang_fb": {
+   "1": {
+    "ten": "Ngẫm Đời Mà Sống",
+    "theo_doi": 15,
+    "thich": 15
+   },
+   "2": {
+    "ten": "Sống Chậm Nghĩ Sâu",
+    "theo_doi": 10,
+    "thich": 10
+   }
+  },
+  "ai": "🧠 Nhận xét số liệu\n- Đơn hàng Accesstrade tháng này đã có tín hiệu mở hàng với 1 đơn TikTok CPS mang lại 189 đồng hoa hồng, còn thiếu 199.811 đồng nữa để rút tiền.\n- Hàng chờ video Facebook giảm còn 49 bài và không còn ảnh chờ, các bot vẫn chạy ổn định 12 lượt mỗi ngày không lỗi.\n- Hai Trang Facebook đã được đổi tên mới thành Ngẫm Đời Mà Sống và Sống Chậm Nghĩ Sâu, lượng theo dõi tăng nhẹ lên lần lượt 15 và 10 người.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Dịch vụ video AI cho shop nhỏ: Hợp với anh vì sẵn tool dựng video tự động, giúp bán gói theo tháng tốt hơn. Bước đầu là tạo 3 video mẫu sản phẩm hot rồi đăng chào dịch vụ trong các nhóm bán hàng.\n- Kênh Shorts chia sẻ mẹo vặt: Hợp với anh để tận dụng tool AI làm video ngắn kèm gắn link tiếp thị Accesstrade kiếm hoa hồng. Bước đầu là xuất 1 clip mẹo vặt 60 giây đăng YouTube Shorts kèm link mua hàng."
  }
 }
