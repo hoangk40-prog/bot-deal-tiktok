@@ -17,5 +17,14 @@
   "chu_de": ["video đồ dùng sắp xếp, dọn dẹp, vệ sinh nhà cửa / mẹo vặt giặt giũ, gọn nhà", "Trang Facebook đồ gia dụng, mẹo dọn dẹp sắp xếp nhà cửa Việt Nam", "#nhagongang #meovat"],
   "hang": {"12": 1, "21": 2, "16": 3, "19": 4, "10": 5, "14": 6, "8": 7, "23": 8},
   "quota": [[7, 3], [14, 5], [1000000, 8]]
+ },
+ "5": {
+  "ten": "Sức khỏe Là Tất cả",
+  "goc": "Trang 5",
+  "phut": 50,
+  "footer": "👉 Theo dõi Trang để mỗi ngày thêm một động tác, một món đồ giúp cơ thể nhẹ nhõm hơn. Có bệnh nền nên hỏi ý kiến bác sĩ trước khi tập.",
+  "chu_de": ["video động tác giãn cơ, bài tập nhẹ tại nhà / dụng cụ chăm sóc sức khoẻ (máy massage, gối cổ...), không nói chữa bệnh, không nói thuốc", "Trang Facebook sức khoẻ đời thường Việt Nam (Sức khỏe Là Tất cả)", "#suckhoe #gianco"],
+  "hang": {"11": 1, "20": 2, "6": 3, "17": 4, "9": 5, "14": 6, "22": 7, "7": 8},
+  "quota": [[7, 3], [14, 5], [1000000, 8]]
  }
 }
