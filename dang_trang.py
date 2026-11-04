@@ -43,10 +43,52 @@ KIEU = {
 # chi dang video, khong chia chan/le. Tang dan: tuan 1 3 video/ngay, tuan 2 5, tu tuan 3 8 (QUOTA3 + HANG3).
 TRANG3 = {"goc": "Trang 3", "cho": "Video chờ đăng", "xong": "Video đã đăng", "tieu_de": "tieu_de.txt"}
 FOOTER3 = "👉 Theo dõi Trang để mỗi ngày biết thêm một món đồ hay, một mẹo nhà cửa."
-CHU_DE3 = ("video đồ gia dụng thông minh / mẹo vặt nhà cửa", "Trang Facebook đồ gia dụng, mẹo vặt nhà cửa Việt Nam",
-           "#dogiadung #meovat")
+CHU_DE3 = ("video đồ dùng nhà bếp thông minh / mẹo bếp, mẹo nấu nướng", "Trang Facebook đồ bếp, mẹo bếp Việt Nam (Bếp Nhà Mẹo Hay)",
+           "#dogiadung #meobep")     # 04/11: Trang 3 = nhanh DO BEP (Trang 4 = don dep, sap xep)
 QUOTA3 = [(7, 3), (14, 5), (10 ** 6, 8)]                 # (so ngay ke tu bai dau, so video/ngay)
 HANG3 = {11: 1, 20: 2, 15: 3, 18: 4, 9: 5, 13: 6, 22: 7, 7: 8}   # gio VN cua luot -> thu tu uu tien (quota 3 = 11h, 20h, 15h)
+# 04/11 anh duyet: cung nick "Pham Hoang" quan ly 2 Trang -> Trang 3 "Bep Nha Meo Hay" = DO BEP; Trang 4 "Do Gia dung va cac meo hay"
+# = DON DEP, SAP XEP NHA CUA, VE SINH, MEO GIAT GIU (nhanh khac de khong trung noi dung). Kho rieng "Trang Facebook/Trang 4",
+# cron phut :15 (lech gio Trang 3), cung tang dan 3 -> 5 -> 8 video/ngay.
+RIENG = {"3": dict(kho=TRANG3, footer=FOOTER3, chu_de=CHU_DE3, hang=HANG3, quota=QUOTA3, utm="fb_trang3", phut=45, ten="Trang 3")}
+# 04/11 anh dan "chuan bi mo them Trang": cau hinh Trang 3, 4, 5... doc tu trang_rieng.json (THEM TRANG = them 1 muc trong file do
+# + 8 cron phut "phut" trong yml). Ma Trang N: secret FB_PAGE<N>_ID/_TOKEN, yml dua het secret vao SECRETS_JSON -> khong sua env.
+try:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "trang_rieng.json"), encoding="utf-8") as _fh:
+        for _so, _c in json.load(_fh).items():
+            if not _so.isdigit() or int(_so) < 3:
+                continue
+            RIENG[_so] = dict(kho={"goc": _c.get("goc") or f"Trang {_so}", "cho": "Video chờ đăng", "xong": "Video đã đăng",
+                                   "tieu_de": "tieu_de.txt"},
+                              footer=_c.get("footer") or FOOTER3, chu_de=tuple(_c.get("chu_de") or CHU_DE3),
+                              hang={int(g): int(h) for g, h in (_c.get("hang") or {}).items()} or HANG3,
+                              quota=[tuple(q) for q in _c.get("quota") or QUOTA3], utm=f"fb_trang{_so}",
+                              phut=int(_c.get("phut", -1)), ten=_c.get("ten") or f"Trang {_so}")
+except (OSError, ValueError) as _e:
+    print("Khong doc duoc trang_rieng.json, dung cau hinh Trang 3 mac dinh:", _e)
+
+
+def trang_tu_slot(slot):
+    """Cron `phut gio * * *` -> so Trang: phut 0 = Trang 1, 30 = Trang 2, con lai tra trang_rieng.json (phut)."""
+    p = (slot or "").split()
+    if not p or not p[0].isdigit():
+        return "1"
+    m = int(p[0])
+    if m == 30:
+        return "2"
+    return next((so for so, c in RIENG.items() if c.get("phut") == m), "1")
+
+
+def ma_trang(sfx):
+    """FB_PAGE<sfx>_ID/_TOKEN: bien moi truong rieng (Trang 1-3 cu) hoac SECRETS_JSON (moi secret, Trang 4 tro di)."""
+    page, token = os.environ.get(f"FB_PAGE{sfx}_ID", ""), os.environ.get(f"FB_PAGE{sfx}_TOKEN", "")
+    if not (page and token):
+        try:
+            s = json.loads(os.environ.get("SECRETS_JSON") or "{}")
+            page, token = page or s.get(f"FB_PAGE{sfx}_ID", ""), token or s.get(f"FB_PAGE{sfx}_TOKEN", "")
+        except ValueError:
+            pass
+    return page, token
 
 
 DUOI = {"video": (".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v"), "anh": (".jpg", ".jpeg", ".png", ".webp")}
@@ -197,7 +239,7 @@ def tg_alert(text):
 
 
 # ---------------------------------------------------------------- 04/11 Trang 3: link TikTok Shop o binh luan
-def _tim_hang(at, tu_khoa):
+def _tim_hang(at, tu_khoa, utm="fb_trang3"):
     """Tim mon tren TikTok Shop (Accesstrade) theo tu khoa: con hang, dung ten (>= 60% chu cua tu khoa co trong ten),
     uu tien ban chay + chinh hang. Tra (info, link hoa hong) hoac None."""
     import auto_deals as ad
@@ -216,7 +258,7 @@ def _tim_hang(at, tu_khoa):
             best = (diem, it)
     if not best:
         return None
-    d = ad.make_link(at, best[1]["url"], best[1]["id"], utm="fb_trang3")
+    d = ad.make_link(at, best[1]["url"], best[1]["id"], utm=utm)
     link = d and (d.get("aff_short_url") or d.get("aff_url"))
     return (best[1], link) if link else None
 
@@ -240,7 +282,7 @@ def nguon_hinh(muc):
     return "🎬 Hình ảnh tham khảo: " + ", ".join(ten) + (f" ({', '.join(sorted(nen)).title()})" if nen else "")
 
 
-def link_trang3(drive, goc, f, oid, token, dry=False, muc=None):
+def link_trang3(drive, goc, f, oid, token, dry=False, muc=None, trang="3"):
     """Video tong hop cua Xuong Video co danh sach mon (Trang 3/san_pham.json, khoa = md5 video) -> tim link hoa hong
     TikTok Shop tung mon -> binh luan dau tien duoi video. Loi gi cung chi in ra, khong lam hong viec dang."""
     at = os.environ.get("ACCESSTRADE_TOKEN", "").strip()
@@ -256,7 +298,7 @@ def link_trang3(drive, goc, f, oid, token, dry=False, muc=None):
         if not m.get("mua_duoc", True):
             continue
         try:
-            r = _tim_hang(at, m["tu_khoa"])
+            r = _tim_hang(at, m["tu_khoa"], RIENG[trang]["utm"])
         except Exception as e:
             print("  Tim hang loi:", m["tu_khoa"], str(e)[:120])
             r = None
@@ -285,7 +327,7 @@ def link_trang3(drive, goc, f, oid, token, dry=False, muc=None):
         time.sleep(30)
     print("Binh luan link loi:", last)
     if "pages_manage_engagement" in last or '"code":200' in last or '"code":10' in last:
-        tg_alert("⚠️ Trang 3: bot không bình luận được link (thiếu quyền pages_manage_engagement). Lấy lại mã Trang 3 có quyền này.")
+        tg_alert(f"⚠️ Trang {trang}: bot không bình luận được link (thiếu quyền pages_manage_engagement). Lấy lại mã Trang {trang} có quyền này.")
 
 
 # ---------------------------------------------------------------- chon file
@@ -463,8 +505,8 @@ def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3, chu_de=
     return lo, bo
 
 
-def luot_trang3(sub, dry):
-    """Trang 3 tang dan: luot (gio VN lay tu cron `45 <gio UTC> * * *`) chi dang khi thu tu HANG3 <= so video/ngay hien tai.
+def luot_trang3(sub, dry, trang="3"):
+    """Trang 3/4 tang dan: luot (gio VN lay tu cron `45|15 <gio UTC> * * *`) chi dang khi thu tu HANG <= so video/ngay hien tai.
     Chay tay (khong co cron) -> luon dang."""
     sch = os.environ.get("SLOT", "").split()
     if len(sch) < 2 or not sch[1].isdigit():
@@ -474,9 +516,9 @@ def luot_trang3(sub, dry):
     if sub.get("bat_dau"):
         bd = calendar.timegm(time.strptime(sub["bat_dau"], "%Y-%m-%d"))
         ngay = int((time.time() + 7 * 3600 - bd) // 86400)
-    quota = next(q for d, q in QUOTA3 if ngay < d)
-    hang = HANG3.get(gio, 99)
-    print(f"Trang 3: ngay thu {ngay + 1}, {quota} video/ngay, luot {gio}h (thu tu {hang})")
+    quota = next(q for d, q in RIENG[trang]["quota"] if ngay < d)
+    hang = RIENG[trang]["hang"].get(gio, 99)
+    print(f"Trang {trang}: ngay thu {ngay + 1}, {quota} video/ngay, luot {gio}h (thu tu {hang})")
     if hang > quota:
         print("  -> Luot nay nghi (chua toi muc tang).")
         return False
@@ -500,7 +542,9 @@ def main():
     kieu = (os.environ.get("KIEU") or "").strip().lower()
     if kieu not in KIEU:
         sys.exit("Thieu KIEU=video hoac KIEU=anh")
-    if (os.environ.get("TRANG") or "").strip() == "3":    # Trang 3 chi dang video
+    if not (os.environ.get("TRANG") or "").strip():       # 04/11: lich tu dong -> Trang lay theo phut cron (trang_rieng.json)
+        os.environ["TRANG"] = trang_tu_slot(os.environ.get("SLOT", ""))
+    if (os.environ.get("TRANG") or "").strip() in RIENG:  # Trang 3, 4... chi dang video
         dang("video")
         return
     # 01/11 anh: thu muc anh trong -> luot anh dang VIDEO thay (anh bo anh vao thi luot do lai dang anh)
@@ -515,22 +559,23 @@ def dang(kieu):
     # 25/10 Trang thu 2 "Cuoi Moi Ngay Sale Hoi" (anh muon 2 Trang noi dung KHAC nhau): chung kho Drive,
     # Trang 1 chi dang file SO LE, Trang 2 chi dang SO CHAN -> khong bao gio trung. TRANG=2 dung FB_PAGE2_*.
     trang = (os.environ.get("TRANG") or "1").strip()
-    t3 = trang == "3"
-    sfx = trang if trang in ("2", "3") else ""
-    page, token = os.environ.get(f"FB_PAGE{sfx}_ID", ""), os.environ.get(f"FB_PAGE{sfx}_TOKEN", "")
+    t3 = trang in RIENG                                   # Trang 3, 4: kho rieng, chi video, tang dan, link o binh luan
+    R = RIENG.get(trang, {})
+    sfx = "" if trang == "1" else trang
+    page, token = ma_trang(sfx)
     sa = os.environ.get("GOOGLE_SA_JSON", "")
-    if t3 and not dry and not (page and token):           # anh chua nap ma Trang 3 -> im lang bo qua, khong bao loi moi luot
-        print("Chua co FB_PAGE3_ID / FB_PAGE3_TOKEN -> Trang 3 chua dang.")
+    if t3 and not dry and not (page and token):           # anh chua nap ma Trang -> im lang bo qua, khong bao loi moi luot
+        print(f"Chua co FB_PAGE{sfx}_ID / FB_PAGE{sfx}_TOKEN -> Trang {trang} chua dang.")
         return
     if not sa or (not dry and not (page and token)):
         sys.exit(f"Thieu GOOGLE_SA_JSON / FB_PAGE{sfx}_ID / FB_PAGE{sfx}_TOKEN")
-    k = TRANG3 if t3 else KIEU[kieu]
+    k = R["kho"] if t3 else KIEU[kieu]
     st = load_state()
-    sub = st.setdefault(f"trang{trang}", {}) if trang in ("2", "3") else st     # trang thai rieng moi Trang
+    sub = st.setdefault(f"trang{trang}", {}) if trang != "1" else st     # trang thai rieng moi Trang
     done = sub.setdefault("da_dang", {}).setdefault(kieu, [])
     chan = 0 if trang == "2" else 1                               # so du khi chia 2: Trang 2 so chan, Trang 1 so le
     if t3:
-        if not luot_trang3(sub, dry):
+        if not luot_trang3(sub, dry, trang):
             return
     else:
         print(f"Trang {trang}: chi dang file so {'chan' if chan == 0 else 'le'}")
@@ -548,7 +593,7 @@ def dang(kieu):
         else:
             done_all = set(st.get("da_dang", {}).get(kieu, [])) | set(st.get("trang2", {}).get("da_dang", {}).get(kieu, []))
         try:
-            lo, trung = tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, chu_de=CHU_DE3 if t3 else None)
+            lo, trung = tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, chu_de=R["chu_de"] if t3 else None)
             bo |= trung
             if lo:
                 txt = drive.text(tdf)
@@ -571,7 +616,7 @@ def dang(kieu):
     if t3:
         muc = doc_san_pham(drive, goc, f) or {}
         ng = nguon_hinh(muc)
-        caption = f"{tieu_de[so]}\n\n{FOOTER3}" + (f"\n{ng}" if ng else "")
+        caption = f"{tieu_de[so]}\n\n{R['footer']}" + (f"\n{ng}" if ng else "")
     else:
         caption = f"{tieu_de[so].replace('#haihuoc #giaitri', '#baihoccuocsong #thongdiep')}\n\n{FOOTER}"
     meta = f.get("videoMediaMetadata") or {}
@@ -582,7 +627,7 @@ def dang(kieu):
     if dry:
         print("DRY_RUN: khong dang.")
         if t3:
-            link_trang3(drive, goc, f, "", "", dry=True, muc=muc)
+            link_trang3(drive, goc, f, "", "", dry=True, muc=muc, trang=trang)
         return
 
     try:
@@ -621,7 +666,7 @@ def dang(kieu):
     if t3:
         sub.setdefault("bat_dau", time.strftime("%Y-%m-%d", time.gmtime(time.time() + 7 * 3600)))
         try:
-            link_trang3(drive, goc, f, oid, token, muc=muc)
+            link_trang3(drive, goc, f, oid, token, muc=muc, trang=trang)
         except Exception as e:
             print("Gan link loi:", str(e)[:200])
     try:
