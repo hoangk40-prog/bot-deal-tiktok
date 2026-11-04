@@ -196,6 +196,84 @@ def tg_alert(text):
             print("Gui canh bao Telegram loi:", e)
 
 
+# ---------------------------------------------------------------- 04/11 Trang 3: link TikTok Shop o binh luan
+def _tim_hang(at, tu_khoa):
+    """Tim mon tren TikTok Shop (Accesstrade) theo tu khoa: con hang, dung ten (>= 60% chu cua tu khoa co trong ten),
+    uu tien ban chay + chinh hang. Tra (info, link hoa hong) hoac None."""
+    import auto_deals as ad
+    prods, _, err = ad.tt_call(at, {"sort_field": "BEST_SELLERS", "limit": 20, "title_keywords": tu_khoa}, f"'{tu_khoa}'")
+    chu = [w for w in ad.fold(tu_khoa).split() if len(w) > 1]
+    best = None
+    for x in prods:
+        it = ad.tt_info(x)
+        t = ad.fold(it["title"])
+        if not it["url"] or not it["stock"] or not 0 < it["price"] <= 1_500_000:
+            continue
+        if chu and sum(w in t for w in chu) / len(chu) < 0.6:
+            continue
+        diem = ad.math.log10(it["sold"] + 10) * (1.3 if ad.is_official(it) else 1)
+        if best is None or diem > best[0]:
+            best = (diem, it)
+    if not best:
+        return None
+    d = ad.make_link(at, best[1]["url"], best[1]["id"], utm="fb_trang3")
+    link = d and (d.get("aff_short_url") or d.get("aff_url"))
+    return (best[1], link) if link else None
+
+
+def link_trang3(drive, goc, f, oid, token, dry=False):
+    """Video tong hop cua Xuong Video co danh sach mon (Trang 3/san_pham.json, khoa = md5 video) -> tim link hoa hong
+    TikTok Shop tung mon -> binh luan dau tien duoi video. Loi gi cung chi in ra, khong lam hong viec dang."""
+    at = os.environ.get("ACCESSTRADE_TOKEN", "").strip()
+    try:
+        sp = json.loads(drive.text(drive.child(goc, "san_pham.json", folder=False)["id"]) or "{}")
+    except Exception as e:
+        print("Khong doc duoc san_pham.json:", str(e)[:120])
+        return
+    muc = sp.get(f.get("md5Checksum") or "")
+    if not muc:
+        print("Video nay khong co danh sach mon -> khong gan link.")
+        return
+    if not at:
+        print("Thieu ACCESSTRADE_TOKEN -> khong gan link.")
+        return
+    dong = []
+    for m in muc.get("mons") or []:
+        if not m.get("mua_duoc", True):
+            continue
+        try:
+            r = _tim_hang(at, m["tu_khoa"])
+        except Exception as e:
+            print("  Tim hang loi:", m["tu_khoa"], str(e)[:120])
+            r = None
+        if r:
+            it, link = r
+            gia = f" – {int(it['price']):,}đ".replace(",", ".") if it["price"] else ""
+            dong.append(f"{len(dong) + 1}. {m['ten']}{gia} 👉 {link}")
+            print("  Link:", m["ten"], "->", it["title"][:60])
+        else:
+            print("  Khong thay hang hop:", m["ten"])
+        time.sleep(2)
+    if not dong:
+        print("Khong tim duoc link mon nao.")
+        return
+    msg = "🛒 Link mua các món trong video:\n" + "\n".join(dong) + "\n(Giá có thể đổi theo thời điểm, bấm link xem giá mới nhất)"
+    print("Binh luan:", msg.replace("\n", " / "))
+    if dry:
+        return
+    last = ""
+    for i in range(8):                       # Reels vua dang con dang xu ly -> binh luan co the bi tu choi, thu lai
+        r = requests.post(f"{FB_API}/{oid}/comments", data={"message": msg, "access_token": token}, timeout=60)
+        if r.status_code < 400:
+            print("Da binh luan link, id:", r.json().get("id"))
+            return
+        last = r.text[:300]
+        time.sleep(30)
+    print("Binh luan link loi:", last)
+    if "pages_manage_engagement" in last or '"code":200' in last or '"code":10' in last:
+        tg_alert("⚠️ Trang 3: bot không bình luận được link (thiếu quyền pages_manage_engagement). Lấy lại mã Trang 3 có quyền này.")
+
+
 # ---------------------------------------------------------------- chon file
 SO_RE = re.compile(r"\s*(\d{1,3})(?!\d)")   # so thu tu toi da 3 chu so: ten kieu ngay `261028_1025_07_...` (tab 7), `1027 (1).mp4` KHONG phai so thu tu (30/10)
 
@@ -463,7 +541,7 @@ def dang(kieu):
         except Exception as e:                  # loi phan tu dat so khong duoc lam hong viec dang
             print("Tu dat so loi:", str(e)[:300])
     tieu_de = titles(txt)
-    files = dung_loai(drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,size,mimeType,videoMediaMetadata"), kieu)
+    files = dung_loai(drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,size,mimeType,videoMediaMetadata,md5Checksum"), kieu)
     print(f"{k['cho']}: {len(files)} file, {len(tieu_de)} dong tieu de")
     if not t3:
         files = [f for f in files if so_dau(f["name"]) is None or so_dau(f["name"]) % 2 == chan]
@@ -486,6 +564,8 @@ def dang(kieu):
     print("Chu thich:", caption.replace("\n", " / "))
     if dry:
         print("DRY_RUN: khong dang.")
+        if t3:
+            link_trang3(drive, goc, f, "", "", dry=True)
         return
 
     try:
@@ -523,6 +603,10 @@ def dang(kieu):
     done.append(f["name"])
     if t3:
         sub.setdefault("bat_dau", time.strftime("%Y-%m-%d", time.gmtime(time.time() + 7 * 3600)))
+        try:
+            link_trang3(drive, goc, f, oid, token)
+        except Exception as e:
+            print("Gan link loi:", str(e)[:200])
     try:
         drive.move(f["id"], cho, xong)
         print(f"Da chuyen sang '{k['xong']}'.")
