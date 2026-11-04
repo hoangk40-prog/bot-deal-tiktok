@@ -5,6 +5,7 @@ Chay bang nhap_facebook.bat. Ma chi luu tren may nay, khong dua len dau ca."""
 import datetime
 import json
 import os
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -72,8 +73,12 @@ try:
 except Exception:
     pass
 
+# 04/11: Trang 3 (nick moi, app rieng): chay `luu_facebook.py 3` (nhap_facebook_trang3.bat) -> luu fb_page3_*
+if sys.argv[1:] == ["3"]:
+    cfg["fb_page3_id"], cfg["fb_page3_token"] = page["id"], page["access_token"]
+    print("  -> Luu la TRANG 3 (Trang 1, 2 giu nguyen).")
 # 25/10: Trang thu 2 ("Cuoi Moi Ngay Sale Hoi"): chon Trang khac Trang dang luu -> luu vao fb_page2_* (khong de mat Trang cu)
-if cfg.get("fb_page_id") and cfg["fb_page_id"] != page["id"]:
+elif cfg.get("fb_page_id") and cfg["fb_page_id"] != page["id"]:
     cfg["fb_page2_id"], cfg["fb_page2_token"] = page["id"], page["access_token"]
     print("  -> Luu la TRANG THU 2 (Trang cu giu nguyen).")
 else:
