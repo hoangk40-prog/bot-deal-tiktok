@@ -11,6 +11,10 @@ Video doc (cao > rong) <= 90 giay -> Reels, con lai -> video thuong. Anh -> /pho
 video/anh viet tieu de, ghi them dong vao tieu_de*.txt. Ten trung file bot da dang / 2 file cung so -> doi so moi;
 giong HET file da dang (md5) -> bo qua.
 
+04/11 SUA LECH TIEU DE: tieu_de.txt chi giu dong cua video DANG CHO. Dang xong -> xoa dong cua so do; moi luot
+(Trang 1, 2) bo dong co so khong con video cho + dong tieu de truyen cuoi cu (#haihuoc #giaitri) -> video moi trung so
+(vd lo "7 - ..." den "30 - ...") khong an nham tieu de cu nua, Gemini xem video viet tieu de moi.
+
 Bien moi truong: KIEU=video|anh, GOOGLE_SA_JSON, FB_PAGE_ID, FB_PAGE_TOKEN, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, GEMINI_API_KEY,
   DRY_RUN=1 (chi in ra se dang gi), AN=1 (dang bai an roi xoa ngay, khong chuyen file, khong ghi trang thai).
 """
@@ -349,6 +353,28 @@ def titles(txt):
     return out
 
 
+CU_TAG = ("#haihuoc", "#giaitri")   # 04/11: tieu de thoi Trang truyen cuoi -> khong dung cho video moi
+
+
+def bo_dong(txt, so):
+    """04/11: xoa dong `so | ...` cua so nay (dang xong), giu nguyen cac dong khac."""
+    giu = [ln for ln in txt.splitlines() if not re.match(rf"\s*{so}\s*\|", ln)]
+    return "\n".join(giu) + ("\n" if giu else "")
+
+
+def don_tieu_de(txt, so_cho):
+    """04/11 (anh duyet): tieu de chi gan voi video DANG CHO. Bo dong co so khong con video cho (da dang / da xoa)
+    va dong tieu de truyen cuoi cu (#haihuoc #giaitri). Tra (txt moi, cac dong da bo)."""
+    giu, bo = [], []
+    for ln in txt.splitlines():
+        m = re.match(r"\s*(\d{1,3})\s*\|", ln)
+        if m and (int(m.group(1)) not in so_cho or any(t in ln for t in CU_TAG)):
+            bo.append(ln)
+        else:
+            giu.append(ln)
+    return "\n".join(giu) + ("\n" if giu else ""), bo
+
+
 def pick(files, tieu_de, done, bo=()):
     """File so nho nhat (so dau ten: 7.jpg -> 7, 1_16x9.mp4 -> 1) co dong tieu de, chua tung dang, khong nam trong `bo`."""
     ok = []
@@ -587,6 +613,19 @@ def dang(kieu):
     tdf = drive.child(goc, k["tieu_de"], folder=False)["id"]
     txt = drive.text(tdf)
     bo = {ten for ten, lan in sub.get("loi_file", {}).get(kieu, {}).items() if lan >= 3}   # file loi 3 lan -> bo qua
+    if not an and not t3:                       # 04/11: don tieu_de.txt truoc (Trang 1, 2 chung kho)
+        try:
+            so_cho = {so_dau(x["name"]) for x in dung_loai(drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'"), kieu)} - {None}
+            moi, bo_ra = don_tieu_de(txt, so_cho) if so_cho else (txt, [])
+            if bo_ra:
+                print(f"Don {k['tieu_de']}: bo {len(bo_ra)} dong (khong con video cho / tieu de truyen cuoi cu):")
+                for ln in bo_ra:
+                    print("   -", ln[:120])
+                if not dry:
+                    drive.write_text(tdf, moi)
+                txt = moi
+        except Exception as e:                  # loi don dep khong duoc lam hong viec dang
+            print("Don tieu de loi:", str(e)[:300])
     if not an:
         if t3:
             done_all = set(done)
@@ -669,6 +708,11 @@ def dang(kieu):
             link_trang3(drive, goc, f, oid, token, muc=muc, trang=trang)
         except Exception as e:
             print("Gan link loi:", str(e)[:200])
+    try:                                        # 04/11: dang xong -> xoa dong tieu de so nay (so dung lai sau khong an nham)
+        drive.write_text(tdf, bo_dong(drive.text(tdf), so))
+        print(f"Da xoa dong tieu de so {so} trong {k['tieu_de']}.")
+    except Exception as e:
+        print("Xoa dong tieu de loi:", str(e)[:200])
     try:
         drive.move(f["id"], cho, xong)
         print(f"Da chuyen sang '{k['xong']}'.")
