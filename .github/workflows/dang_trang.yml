@@ -15,12 +15,21 @@ on:
     - cron: "30 9 * * *"           # 16h30: video
     - cron: "30 10 * * *"          # 17h30: anh
     - cron: "30 13 * * *"          # 20h30: video
+    # 04/11 Trang 3 (do gia dung, nick moi): phut 45, chi video, TANG DAN (dang_trang.py QUOTA3/HANG3: tuan 1 = 11h, 15h, 20h)
+    - cron: "45 0 * * *"           # 7h45
+    - cron: "45 2 * * *"           # 9h45
+    - cron: "45 4 * * *"           # 11h45
+    - cron: "45 6 * * *"           # 13h45
+    - cron: "45 8 * * *"           # 15h45
+    - cron: "45 11 * * *"          # 18h45
+    - cron: "45 13 * * *"          # 20h45
+    - cron: "45 15 * * *"          # 22h45
   workflow_dispatch:
     inputs:
       trang:
-        description: "Trang nao (1 = San Deal, 2 = Cuoi Moi Ngay Sale Hoi)"
+        description: "Trang nao (1 = Ngam Doi Ma Song, 2 = Song Cham Nghi Sau, 3 = do gia dung)"
         type: choice
-        options: ["1", "2"]
+        options: ["1", "2", "3"]
         default: "1"
       kieu:
         description: "Dang gi"
@@ -60,10 +69,13 @@ jobs:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
           FB_PAGE2_ID: ${{ secrets.FB_PAGE2_ID }}
           FB_PAGE2_TOKEN: ${{ secrets.FB_PAGE2_TOKEN }}
+          FB_PAGE3_ID: ${{ secrets.FB_PAGE3_ID }}
+          FB_PAGE3_TOKEN: ${{ secrets.FB_PAGE3_TOKEN }}
+          SLOT: ${{ github.event.schedule }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # 27/10: tu dat so + AI viet tieu de file moi
-          TRANG: ${{ github.event_name == 'workflow_dispatch' && inputs.trang || (startsWith(github.event.schedule, '30 ') && '2' || '1') }}
+          TRANG: ${{ github.event_name == 'workflow_dispatch' && inputs.trang || (startsWith(github.event.schedule, '45 ') && '3' || (startsWith(github.event.schedule, '30 ') && '2' || '1')) }}
           KIEU: ${{ github.event_name == 'workflow_dispatch' && inputs.kieu || ((endsWith(github.event.schedule, ' 2 * * *') || endsWith(github.event.schedule, ' 10 * * *')) && 'anh' || 'video') }}
           AN: ${{ inputs.an && '1' || '' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
