@@ -221,16 +221,30 @@ def _tim_hang(at, tu_khoa):
     return (best[1], link) if link else None
 
 
-def link_trang3(drive, goc, f, oid, token, dry=False):
-    """Video tong hop cua Xuong Video co danh sach mon (Trang 3/san_pham.json, khoa = md5 video) -> tim link hoa hong
-    TikTok Shop tung mon -> binh luan dau tien duoi video. Loi gi cung chi in ra, khong lam hong viec dang."""
-    at = os.environ.get("ACCESSTRADE_TOKEN", "").strip()
+def doc_san_pham(drive, goc, f):
+    """Muc cua video f trong Trang 3/san_pham.json (khoa = md5 video, Xuong Video ghi) hoac None."""
     try:
         sp = json.loads(drive.text(drive.child(goc, "san_pham.json", folder=False)["id"]) or "{}")
     except Exception as e:
         print("Khong doc duoc san_pham.json:", str(e)[:120])
-        return
-    muc = sp.get(f.get("md5Checksum") or "")
+        return None
+    return sp.get(f.get("md5Checksum") or "")
+
+
+def nguon_hinh(muc):
+    """04/11 anh duyet: ghi nguon nguoi quay goc cuoi bai (video tong hop ghep tu nhieu video)."""
+    ten = list(dict.fromkeys(m.get("tac_gia") for m in (muc or {}).get("mons") or [] if m.get("tac_gia")))
+    nen = {m.get("nen_tang") for m in (muc or {}).get("mons") or []} - {""}
+    if not ten:
+        return ""
+    return "🎬 Hình ảnh tham khảo: " + ", ".join(ten) + (f" ({', '.join(sorted(nen)).title()})" if nen else "")
+
+
+def link_trang3(drive, goc, f, oid, token, dry=False, muc=None):
+    """Video tong hop cua Xuong Video co danh sach mon (Trang 3/san_pham.json, khoa = md5 video) -> tim link hoa hong
+    TikTok Shop tung mon -> binh luan dau tien duoi video. Loi gi cung chi in ra, khong lam hong viec dang."""
+    at = os.environ.get("ACCESSTRADE_TOKEN", "").strip()
+    muc = muc if muc is not None else doc_san_pham(drive, goc, f)
     if not muc:
         print("Video nay khong co danh sach mon -> khong gan link.")
         return
@@ -553,8 +567,11 @@ def dang(kieu):
         return False
     so, f = got
     # 01/11: tieu de cu (viet luc con la Trang giai tri) -> doi hashtag cuoi theo chu de thong diep
+    muc = None
     if t3:
-        caption = f"{tieu_de[so]}\n\n{FOOTER3}"
+        muc = doc_san_pham(drive, goc, f) or {}
+        ng = nguon_hinh(muc)
+        caption = f"{tieu_de[so]}\n\n{FOOTER3}" + (f"\n{ng}" if ng else "")
     else:
         caption = f"{tieu_de[so].replace('#haihuoc #giaitri', '#baihoccuocsong #thongdiep')}\n\n{FOOTER}"
     meta = f.get("videoMediaMetadata") or {}
@@ -565,7 +582,7 @@ def dang(kieu):
     if dry:
         print("DRY_RUN: khong dang.")
         if t3:
-            link_trang3(drive, goc, f, "", "", dry=True)
+            link_trang3(drive, goc, f, "", "", dry=True, muc=muc)
         return
 
     try:
@@ -604,7 +621,7 @@ def dang(kieu):
     if t3:
         sub.setdefault("bat_dau", time.strftime("%Y-%m-%d", time.gmtime(time.time() + 7 * 3600)))
         try:
-            link_trang3(drive, goc, f, oid, token)
+            link_trang3(drive, goc, f, oid, token, muc=muc)
         except Exception as e:
             print("Gan link loi:", str(e)[:200])
     try:
