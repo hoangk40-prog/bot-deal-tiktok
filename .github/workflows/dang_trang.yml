@@ -35,6 +35,16 @@ on:
     - cron: "15 12 * * *"          # 19h15
     - cron: "15 14 * * *"          # 21h15
     - cron: "15 16 * * *"          # 23h15
+    # 05/11 Trang 5 "Suc khoe La Tat ca" (dong tac gian co + dung cu suc khoe; cung nick Pham Hoang): phut 50, chi video, TANG DAN
+    # (trang_rieng.json "5" hang: tuan 1 = 11h50, 20h50, 6h50)
+    - cron: "50 23 * * *"          # 6h50
+    - cron: "50 0 * * *"           # 7h50
+    - cron: "50 2 * * *"           # 9h50
+    - cron: "50 4 * * *"           # 11h50
+    - cron: "50 7 * * *"           # 14h50
+    - cron: "50 10 * * *"          # 17h50
+    - cron: "50 13 * * *"          # 20h50
+    - cron: "50 15 * * *"          # 22h50
   workflow_dispatch:
     inputs:
       trang:
