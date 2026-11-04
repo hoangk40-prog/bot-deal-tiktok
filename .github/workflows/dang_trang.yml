@@ -75,6 +75,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}   # 27/10: tu dat so + AI viet tieu de file moi
+          ACCESSTRADE_TOKEN: ${{ secrets.ACCESSTRADE_TOKEN }}   # 04/11 Trang 3: link TikTok Shop o binh luan
           TRANG: ${{ github.event_name == 'workflow_dispatch' && inputs.trang || (startsWith(github.event.schedule, '45 ') && '3' || (startsWith(github.event.schedule, '30 ') && '2' || '1')) }}
           KIEU: ${{ github.event_name == 'workflow_dispatch' && inputs.kieu || ((endsWith(github.event.schedule, ' 2 * * *') || endsWith(github.event.schedule, ' 10 * * *')) && 'anh' || 'video') }}
           AN: ${{ inputs.an && '1' || '' }}
