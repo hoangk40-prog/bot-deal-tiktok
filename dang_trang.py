@@ -15,6 +15,7 @@ Bien moi truong: KIEU=video|anh, GOOGLE_SA_JSON, FB_PAGE_ID, FB_PAGE_TOKEN, TELE
   DRY_RUN=1 (chi in ra se dang gi), AN=1 (dang bai an roi xoa ngay, khong chuyen file, khong ghi trang thai).
 """
 import base64
+import calendar
 import json
 import os
 import re
@@ -37,6 +38,23 @@ KIEU = {
     "video": {"goc": "Video Trang Facebook", "cho": "Video chờ đăng", "xong": "Video đã đăng", "tieu_de": "tieu_de.txt"},
     "anh": {"goc": "Ảnh Trang Facebook", "cho": "Ảnh chờ đăng", "xong": "Ảnh đã đăng", "tieu_de": "tieu_de_anh.txt"},
 }
+# 04/11 TRANG 3 (nick moi, app rieng, anh giao Claude toan quyen): chu de DO GIA DUNG THONG MINH + MEO VAT NHA CUA
+# (video Trung thuyet minh lai qua Xuong Video). Kho rieng "Trang Facebook/Trang 3" (Chờ duyệt -> anh xem -> Video chờ đăng),
+# chi dang video, khong chia chan/le. Tang dan: tuan 1 3 video/ngay, tuan 2 5, tu tuan 3 8 (QUOTA3 + HANG3).
+TRANG3 = {"goc": "Trang 3", "cho": "Video chờ đăng", "xong": "Video đã đăng", "tieu_de": "tieu_de.txt"}
+FOOTER3 = "👉 Theo dõi Trang để mỗi ngày biết thêm một món đồ hay, một mẹo nhà cửa."
+CHU_DE3 = ("video đồ gia dụng thông minh / mẹo vặt nhà cửa", "Trang Facebook đồ gia dụng, mẹo vặt nhà cửa Việt Nam",
+           "#dogiadung #meovat")
+QUOTA3 = [(7, 3), (14, 5), (10 ** 6, 8)]                 # (so ngay ke tu bai dau, so video/ngay)
+HANG3 = {11: 1, 20: 2, 15: 3, 18: 4, 9: 5, 13: 6, 22: 7, 7: 8}   # gio VN cua luot -> thu tu uu tien (quota 3 = 11h, 20h, 15h)
+
+
+DUOI = {"video": (".mp4", ".mov", ".webm", ".avi", ".mkv", ".m4v"), "anh": (".jpg", ".jpeg", ".png", ".webp")}
+
+
+def dung_loai(files, kieu):
+    """04/11: Xuong Video bo kem file .txt cung ten vao thu muc cho (Trang 3) -> chi lay file dung loai."""
+    return [f for f in files if f["name"].lower().endswith(DUOI[kieu])]
 
 
 def nfc(s):
@@ -238,8 +256,9 @@ def gemini_upload(key, path, mime):
     return f["name"], f["uri"]
 
 
-def ai_tieu_de(path, kieu, mau):
-    """Gemini xem video / anh -> 1 dong tieu de giong kieu cac dong mau. Loi / khong khoa -> None (de lan sau)."""
+def ai_tieu_de(path, kieu, mau, chu_de=None):
+    """Gemini xem video / anh -> 1 dong tieu de giong kieu cac dong mau. Loi / khong khoa -> None (de lan sau).
+    chu_de = (loai, trang, hashtag cuoi) cho Trang 3; None = thong diep cuoc song (Trang 1, 2)."""
     key = os.environ.get("GEMINI_API_KEY", "").strip()
     if not key:
         print("  Chua co GEMINI_API_KEY -> chua viet tieu de duoc")
@@ -254,13 +273,22 @@ def ai_tieu_de(path, kieu, mau):
         mime = {".png": "image/png", ".webp": "image/webp"}.get(ext, "image/jpeg")
         with open(path, "rb") as fh:
             media = {"inline_data": {"mime_type": mime, "data": base64.b64encode(fh.read()).decode()}}
-    loai = "video thông điệp cuộc sống" if kieu == "video" else "ảnh thông điệp cuộc sống"
-    prompt = (f"Đây là 1 {loai} sắp đăng lên Trang Facebook bài học cuộc sống Việt Nam. Xem kỹ (nghe cả lời đọc) rồi viết 1 dòng "
-              "tiêu đề tiếng Việt CÓ DẤU, 10–22 chữ, gây tò mò, ĐÚNG nội dung (không bịa chi tiết không có), không tục tĩu, không "
-              "giật tít sai sự thật, hợp chuẩn cộng đồng Facebook, nói được bài học người xem nhận được; thêm 1 emoji hợp nội dung "
-              "và 2–3 hashtag không dấu, cuối cùng là #baihoccuocsong #thongdiep (KHÔNG dùng #haihuoc #giaitri). Không dùng dấu |. "
-              "Viết gần giống kiểu các dòng mẫu sau (đổi hashtag cuối như trên):\n" + "\n".join(mau) +
-              '\nTrả JSON {"tieu_de": "..."}')
+    if chu_de:
+        loai, trang, tag = chu_de
+        prompt = (f"Đây là 1 {loai} sắp đăng lên {trang}. Xem kỹ (nghe cả lời đọc) rồi viết 1 dòng tiêu đề tiếng Việt CÓ DẤU, "
+                  "10–22 chữ, gây tò mò, ĐÚNG nội dung (không bịa chi tiết không có, không hứa công dụng video không cho thấy), "
+                  "không tục tĩu, không giật tít sai sự thật, hợp chuẩn cộng đồng Facebook, nói được người xem được lợi gì; "
+                  f"thêm 1 emoji hợp nội dung và 1–2 hashtag không dấu, cuối cùng là {tag}. Không dùng dấu |. Không nhắc Trung "
+                  "Quốc / Douyin / tên kênh gốc." + ("\nKiểu các dòng mẫu:\n" + "\n".join(mau) if mau else "") +
+                  '\nTrả JSON {"tieu_de": "..."}')
+    else:
+        loai = "video thông điệp cuộc sống" if kieu == "video" else "ảnh thông điệp cuộc sống"
+        prompt = (f"Đây là 1 {loai} sắp đăng lên Trang Facebook bài học cuộc sống Việt Nam. Xem kỹ (nghe cả lời đọc) rồi viết 1 dòng "
+                  "tiêu đề tiếng Việt CÓ DẤU, 10–22 chữ, gây tò mò, ĐÚNG nội dung (không bịa chi tiết không có), không tục tĩu, không "
+                  "giật tít sai sự thật, hợp chuẩn cộng đồng Facebook, nói được bài học người xem nhận được; thêm 1 emoji hợp nội dung "
+                  "và 2–3 hashtag không dấu, cuối cùng là #baihoccuocsong #thongdiep (KHÔNG dùng #haihuoc #giaitri). Không dùng dấu |. "
+                  "Viết gần giống kiểu các dòng mẫu sau (đổi hashtag cuối như trên):\n" + "\n".join(mau) +
+                  '\nTrả JSON {"tieu_de": "..."}')
     body = {"contents": [{"parts": [media, {"text": prompt}]}], "generationConfig": {
         "temperature": 0.8, "responseMimeType": "application/json",
         "responseSchema": {"type": "OBJECT", "properties": {"tieu_de": {"type": "STRING"}}, "required": ["tieu_de"]}}}
@@ -288,10 +316,10 @@ def ai_tieu_de(path, kieu, mau):
                 pass
 
 
-def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3):
+def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3, chu_de=None):
     """File trong thu muc cho chua dang duoc vi ten khong co so / trung so file da dang / chua co dong tieu de
     -> AI viet tieu de, ghi them dong `so | tieu de` vao tieu_de*.txt, doi ten file sang so do. Tra (so file da lo, ten file bo qua)."""
-    files = drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,md5Checksum,createdTime")
+    files = dung_loai(drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,md5Checksum,createdTime"), kieu)
     da_dang = drive.ls(f"'{xong}' in parents and mimeType!='{FOLDER}'", "id,name,md5Checksum")
     tieu_de = titles(txt)
     md5_xong = {f.get("md5Checksum") for f in da_dang if f.get("md5Checksum")}
@@ -321,7 +349,7 @@ def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3):
             path = os.path.join(tmp, "f" + os.path.splitext(f["name"])[1].lower())
             try:
                 drive.download(f["id"], path)
-                t = ai_tieu_de(path, kieu, mau)
+                t = ai_tieu_de(path, kieu, mau, chu_de)
             except Exception as e:
                 print(f"  {f['name']}: AI viet tieu de loi ({str(e)[:120]}) -> de lan sau")
                 continue
@@ -343,6 +371,26 @@ def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3):
     return lo, bo
 
 
+def luot_trang3(sub, dry):
+    """Trang 3 tang dan: luot (gio VN lay tu cron `45 <gio UTC> * * *`) chi dang khi thu tu HANG3 <= so video/ngay hien tai.
+    Chay tay (khong co cron) -> luon dang."""
+    sch = os.environ.get("SLOT", "").split()
+    if len(sch) < 2 or not sch[1].isdigit():
+        return True
+    gio = (int(sch[1]) + 7) % 24
+    ngay = 0
+    if sub.get("bat_dau"):
+        bd = calendar.timegm(time.strptime(sub["bat_dau"], "%Y-%m-%d"))
+        ngay = int((time.time() + 7 * 3600 - bd) // 86400)
+    quota = next(q for d, q in QUOTA3 if ngay < d)
+    hang = HANG3.get(gio, 99)
+    print(f"Trang 3: ngay thu {ngay + 1}, {quota} video/ngay, luot {gio}h (thu tu {hang})")
+    if hang > quota:
+        print("  -> Luot nay nghi (chua toi muc tang).")
+        return False
+    return True
+
+
 def load_state():
     try:
         with open(STATE_FILE, encoding="utf-8") as fh:
@@ -360,6 +408,9 @@ def main():
     kieu = (os.environ.get("KIEU") or "").strip().lower()
     if kieu not in KIEU:
         sys.exit("Thieu KIEU=video hoac KIEU=anh")
+    if (os.environ.get("TRANG") or "").strip() == "3":    # Trang 3 chi dang video
+        dang("video")
+        return
     # 01/11 anh: thu muc anh trong -> luot anh dang VIDEO thay (anh bo anh vao thi luot do lai dang anh)
     if dang(kieu) is False and kieu == "anh":
         print("Khong co anh -> luot nay dang video thay.")
@@ -372,17 +423,25 @@ def dang(kieu):
     # 25/10 Trang thu 2 "Cuoi Moi Ngay Sale Hoi" (anh muon 2 Trang noi dung KHAC nhau): chung kho Drive,
     # Trang 1 chi dang file SO LE, Trang 2 chi dang SO CHAN -> khong bao gio trung. TRANG=2 dung FB_PAGE2_*.
     trang = (os.environ.get("TRANG") or "1").strip()
-    sfx = "2" if trang == "2" else ""
+    t3 = trang == "3"
+    sfx = trang if trang in ("2", "3") else ""
     page, token = os.environ.get(f"FB_PAGE{sfx}_ID", ""), os.environ.get(f"FB_PAGE{sfx}_TOKEN", "")
     sa = os.environ.get("GOOGLE_SA_JSON", "")
+    if t3 and not dry and not (page and token):           # anh chua nap ma Trang 3 -> im lang bo qua, khong bao loi moi luot
+        print("Chua co FB_PAGE3_ID / FB_PAGE3_TOKEN -> Trang 3 chua dang.")
+        return
     if not sa or (not dry and not (page and token)):
         sys.exit(f"Thieu GOOGLE_SA_JSON / FB_PAGE{sfx}_ID / FB_PAGE{sfx}_TOKEN")
-    k = KIEU[kieu]
+    k = TRANG3 if t3 else KIEU[kieu]
     st = load_state()
-    sub = st.setdefault("trang2", {}) if trang == "2" else st     # trang thai rieng moi Trang
+    sub = st.setdefault(f"trang{trang}", {}) if trang in ("2", "3") else st     # trang thai rieng moi Trang
     done = sub.setdefault("da_dang", {}).setdefault(kieu, [])
     chan = 0 if trang == "2" else 1                               # so du khi chia 2: Trang 2 so chan, Trang 1 so le
-    print(f"Trang {trang}: chi dang file so {'chan' if chan == 0 else 'le'}")
+    if t3:
+        if not luot_trang3(sub, dry):
+            return
+    else:
+        print(f"Trang {trang}: chi dang file so {'chan' if chan == 0 else 'le'}")
 
     drive = Drive(sa)
     goc = drive.child(drive.root(), k["goc"], folder=True)["id"]
@@ -392,18 +451,22 @@ def dang(kieu):
     txt = drive.text(tdf)
     bo = {ten for ten, lan in sub.get("loi_file", {}).get(kieu, {}).items() if lan >= 3}   # file loi 3 lan -> bo qua
     if not an:
-        done_all = set(st.get("da_dang", {}).get(kieu, [])) | set(st.get("trang2", {}).get("da_dang", {}).get(kieu, []))
+        if t3:
+            done_all = set(done)
+        else:
+            done_all = set(st.get("da_dang", {}).get(kieu, [])) | set(st.get("trang2", {}).get("da_dang", {}).get(kieu, []))
         try:
-            lo, trung = tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry)
+            lo, trung = tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, chu_de=CHU_DE3 if t3 else None)
             bo |= trung
             if lo:
                 txt = drive.text(tdf)
         except Exception as e:                  # loi phan tu dat so khong duoc lam hong viec dang
             print("Tu dat so loi:", str(e)[:300])
     tieu_de = titles(txt)
-    files = drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,size,mimeType,videoMediaMetadata")
+    files = dung_loai(drive.ls(f"'{cho}' in parents and mimeType!='{FOLDER}'", "id,name,size,mimeType,videoMediaMetadata"), kieu)
     print(f"{k['cho']}: {len(files)} file, {len(tieu_de)} dong tieu de")
-    files = [f for f in files if so_dau(f["name"]) is None or so_dau(f["name"]) % 2 == chan]
+    if not t3:
+        files = [f for f in files if so_dau(f["name"]) is None or so_dau(f["name"]) % 2 == chan]
     if bo:
         print("  Bo qua (trung / loi nhieu lan):", ", ".join(sorted(bo)))
     got = pick(files, tieu_de, done, bo)
@@ -412,7 +475,10 @@ def dang(kieu):
         return False
     so, f = got
     # 01/11: tieu de cu (viet luc con la Trang giai tri) -> doi hashtag cuoi theo chu de thong diep
-    caption = f"{tieu_de[so].replace('#haihuoc #giaitri', '#baihoccuocsong #thongdiep')}\n\n{FOOTER}"
+    if t3:
+        caption = f"{tieu_de[so]}\n\n{FOOTER3}"
+    else:
+        caption = f"{tieu_de[so].replace('#haihuoc #giaitri', '#baihoccuocsong #thongdiep')}\n\n{FOOTER}"
     meta = f.get("videoMediaMetadata") or {}
     w, h, dur = int(meta.get("width", 0)), int(meta.get("height", 0)), int(meta.get("durationMillis", 0)) / 1000
     cach = "anh" if kieu == "anh" else ("reels" if h > w and 0 < dur <= 90 else "video")
@@ -455,6 +521,8 @@ def dang(kieu):
     sub["loi_lien_tiep"] = 0
     sub.get("loi_file", {}).get(kieu, {}).pop(f["name"], None)
     done.append(f["name"])
+    if t3:
+        sub.setdefault("bat_dau", time.strftime("%Y-%m-%d", time.gmtime(time.time() + 7 * 3600)))
     try:
         drive.move(f["id"], cho, xong)
         print(f"Da chuyen sang '{k['xong']}'.")
