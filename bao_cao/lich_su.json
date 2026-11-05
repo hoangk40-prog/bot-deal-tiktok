@@ -736,5 +736,65 @@
    }
   },
   "ai": "🧠 Nhận xét số liệu\n- Hai trang Facebook đã tăng nhẹ lên 20 và 13 người theo dõi, bot chạy ổn định mỗi ngày 12 lượt không lỗi.\n- Đơn hàng Accesstrade giữ nguyên từ đầu tháng, anh cần chủ động chia sẻ link deal vào các hội nhóm mua sắm để kiếm thêm khách thật.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Dịch vụ tạo video AI cho shop nhỏ: Rất hợp vì anh đang có sẵn tool tự động, giúp tăng người thuê tool theo tháng. Bước đầu là làm 3 video mẫu sản phẩm hot rồi đăng chào dịch vụ trong các nhóm bán hàng online.\n- Kênh Shorts chia sẻ mẹo vặt gia đình: Tận dụng ngay tool AI sẵn có để làm video ngắn kèm gắn link tiếp thị Accesstrade kiếm hoa hồng. Bước đầu là xuất 1 clip mẹo vặt 60 giây đăng YouTube Shorts kèm link mua sản phẩm."
+ },
+ "2026-11-05": {
+  "ngay": "2026-11-05",
+  "luc": "23:35",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 1,
+   "doanh_so": 59295.0,
+   "hoa_hong": 189.0,
+   "cho_duyet": 2,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {
+    "tiktok_cps": 1
+   }
+  },
+  "con_thieu_de_rut_tien": 199811.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "video_cho": 49,
+   "video_da_dang": 28,
+   "anh_cho": 0,
+   "anh_da_dang": 0
+  },
+  "bot": {
+   "mon_gui_hom_nay": 26,
+   "luot_chay_hom_nay": 12,
+   "bai_fb_hom_nay": 2,
+   "loi_lien_tiep": 0
+  },
+  "dang_trang": {
+   "video_da_dang": 45,
+   "anh_da_dang": 18,
+   "loi_lien_tiep": 0,
+   "trang2_video_da_dang": 43,
+   "trang2_anh_da_dang": 14,
+   "trang2_loi_lien_tiep": 0
+  },
+  "trang_fb": {
+   "1": {
+    "ten": "Ngẫm Đời Mà Sống",
+    "theo_doi": 21,
+    "thich": 21
+   },
+   "2": {
+    "ten": "Sống Chậm Nghĩ Sâu",
+    "theo_doi": 13,
+    "thich": 13
+   }
+  },
+  "ai": "🧠 Nhận xét số liệu\n- Bot hoạt động ổn định với 12 lượt chạy và 26 món gửi hôm nay, hệ thống đăng bài không bị lỗi nhưng các trang Facebook vẫn rất ít lượt theo dõi (21 và 13 người).\n- Doanh thu Accesstrade đi ngang từ đầu tháng với 1 đơn duy nhất, anh còn thiếu gần 200 nghìn đồng nữa mới đủ điều kiện rút tiền.\n- Anh nên chủ động chia sẻ link deal từ bot vào các hội nhóm mua sắm có tiềm năng thay vì chỉ chờ đợi người xem tự tìm đến.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Dịch vụ tạo video AI cho shop nhỏ: Rất hợp vì anh đang có sẵn tool tự động, giúp tăng người thuê tool theo tháng. Bước đầu là làm 3 video mẫu sản phẩm hot rồi đăng chào dịch vụ trong các nhóm bán hàng online.\n- Kênh Shorts chia sẻ mẹo vặt gia đình: Tận dụng ngay tool AI sẵn có để làm video ngắn kèm gắn link tiếp thị Accesstrade kiếm hoa hồng. Bước đầu là xuất 1 clip mẹo vặt 60 giây đăng YouTube Shorts kèm link mua sản phẩm."
  }
 }
