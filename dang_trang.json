@@ -168,11 +168,11 @@
     "1.mp4"
    ]
   },
-  "loi_lien_tiep": 1,
+  "loi_lien_tiep": 2,
   "bat_dau": "2026-11-05",
   "loi_file": {
    "video": {
-    "2.mp4": 1
+    "2.mp4": 2
    }
   }
  },
