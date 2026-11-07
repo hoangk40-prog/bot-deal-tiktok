@@ -1,4 +1,4 @@
-# Tra loi binh luan 2 Trang FB bang mau (26/10 viet, 27/10 dua len GitHub). Cung Secrets voi workflow dang Trang.
+# Tra loi binh luan cac Trang FB bang mau (26/10 viet, 27/10 dua len GitHub; 07/11 mau rieng tung Trang + Trang 3-5). Cung Secrets voi workflow dang Trang.
 name: Tra loi binh luan Trang Facebook
 on:
   schedule:
@@ -23,6 +23,7 @@ jobs:
       TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       KENH_LINK: ${{ secrets.KENH_LINK || 'https://t.me/sandealgiatot_moingay' }}   # nguoi hoi mua -> kenh deal Telegram
       DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
+      SECRETS_JSON: ${{ toJSON(secrets) }}   # 07/11: Trang 3 tro di doc FB_PAGE<N>_ID/_TOKEN o day (giong dang_trang.yml)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,11 +32,27 @@ jobs:
       - name: Trang 1
         run: python tra_loi_binh_luan.py
       - name: Trang 2
-        if: env.FB_PAGE2_ID != ''
+        if: always() && env.FB_PAGE2_ID != ''
         env: { TRANG: "2" }
         run: python tra_loi_binh_luan.py
+      # 07/11: Trang 3-5 (chua co ma thi script tu bo qua; loi 1 Trang khong chan Trang khac)
+      - name: Trang 3
+        if: always()
+        continue-on-error: true
+        env: { TRANG: "3" }
+        run: python tra_loi_binh_luan.py
+      - name: Trang 4
+        if: always()
+        continue-on-error: true
+        env: { TRANG: "4" }
+        run: python tra_loi_binh_luan.py
+      - name: Trang 5
+        if: always()
+        continue-on-error: true
+        env: { TRANG: "5" }
+        run: python tra_loi_binh_luan.py
       - name: Luu trang thai
-        if: env.DRY_RUN != '1'
+        if: always() && env.DRY_RUN != '1'   # Trang nao loi cung van luu tra loi da gui (khong tra loi trung)
         run: |
           git config user.name "bot"; git config user.email "bot@users.noreply.github.com"
           git add tra_loi_binh_luan.json 2>/dev/null || true
