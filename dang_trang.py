@@ -445,9 +445,16 @@ def ai_tieu_de(path, kieu, mau, chu_de=None):
         loai = "video thông điệp cuộc sống" if kieu == "video" else "ảnh thông điệp cuộc sống"
         prompt = (f"Đây là 1 {loai} sắp đăng lên Trang Facebook bài học cuộc sống Việt Nam. Xem kỹ (nghe cả lời đọc) rồi viết 1 dòng "
                   "tiêu đề tiếng Việt CÓ DẤU, 10–22 chữ, gây tò mò, ĐÚNG nội dung (không bịa chi tiết không có), không tục tĩu, không "
-                  "giật tít sai sự thật, hợp chuẩn cộng đồng Facebook, nói được bài học người xem nhận được; thêm 1 emoji hợp nội dung "
+                  "giật tít sai sự thật, hợp chuẩn cộng đồng Facebook. "
+                  # 07/11 số liệu Trang 1, 2: tiêu đề KỂ CẢNH (vd 'Cô gái ngồi quán nước khóc nức nở kể chuyện học lái xe')
+                  # 700-2.500 lượt xem, tiêu đề 'Bài học thấm thía về...' trung vị 70-80 lượt
+                  "BẮT BUỘC MỞ ĐẦU BẰNG MỘT CẢNH CỤ THỂ có trong video: ai (cô gái, ông bố, anh Hùng...), đang ở đâu / làm gì, chi tiết "
+                  "lạ khiến người ta muốn xem tiếp, vd 'Bố rủ cả nhà đi ăn phở, con trai liền chạy vào lấy áo mưa', 'Bà vợ soi gương "
+                  "thở dài chê nhan sắc, nghe ông chồng nói một câu...'. Video chỉ nói chung chung không có nhân vật thì tả CẢNH/HÌNH "
+                  "đầu video. TUYỆT ĐỐI KHÔNG mở bằng 'Bài học', 'Thấu hiểu', 'Nỗi lòng', 'Những', 'Cuộc sống', 'Đời người'; không nói "
+                  "hết kết cục. Thêm 1 emoji hợp nội dung "
                   "và 2–3 hashtag không dấu, cuối cùng là #baihoccuocsong #thongdiep (KHÔNG dùng #haihuoc #giaitri). Không dùng dấu |. "
-                  "Viết gần giống kiểu các dòng mẫu sau (đổi hashtag cuối như trên):\n" + "\n".join(mau) +
+                  "Các dòng mẫu sau CHỈ để xem cách đặt emoji/hashtag, KHÔNG bắt chước câu mở đầu của chúng:\n" + "\n".join(mau) +
                   '\nTrả JSON {"tieu_de": "..."}')
     body = {"contents": [{"parts": [media, {"text": prompt}]}], "generationConfig": {
         "temperature": 0.8, "responseMimeType": "application/json",

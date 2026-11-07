@@ -4,16 +4,16 @@ on:
   # Make 8074072 da TAT 22/10 -> bot nay dang thay. Dung bat lai Make (dang trung).
   # 23/10 anh duyet tang giai tri: 3 video (12h, 16h, 20h) + 2 anh (9h, 17h) moi ngay
   schedule:
-    - cron: "0 2 * * *"            # 9h gio VN: anh
+    # 07/11 (anh duyet theo so lieu): Trang 1, 2 tu 5 xuong 4 video/ngay, don ve chieu toi (20h xem nhieu nhat, 9h it nhat).
+    # Truoc: 9h anh, 12h, 16h, 17h anh, 20h. Khung "anh" (gio UTC 2, 10) da bo -> khong con dang anh (kho anh dang trong).
     - cron: "0 5 * * *"            # 12h gio VN: video
     - cron: "0 9 * * *"            # 16h gio VN: video
-    - cron: "0 10 * * *"           # 17h gio VN: anh
+    - cron: "0 11 * * *"           # 18h gio VN: video
     - cron: "0 13 * * *"           # 20h gio VN: video
-    # 25/10 Trang 2 "Cuoi Moi Ngay Sale Hoi": cung lich, LECH 30 phut (phut 30 = Trang 2), dang file SO CHAN
-    - cron: "30 2 * * *"           # 9h30: anh
+    # 25/10 Trang 2: cung lich, LECH 30 phut (phut 30 = Trang 2), dang file SO CHAN
     - cron: "30 5 * * *"           # 12h30: video
     - cron: "30 9 * * *"           # 16h30: video
-    - cron: "30 10 * * *"          # 17h30: anh
+    - cron: "30 11 * * *"          # 18h30: video
     - cron: "30 13 * * *"          # 20h30: video
     # 04/11 Trang 3 (do gia dung, nick moi): phut 45, chi video, TANG DAN (dang_trang.py QUOTA3/HANG3: tuan 1 = 11h, 15h, 20h)
     - cron: "45 0 * * *"           # 7h45
