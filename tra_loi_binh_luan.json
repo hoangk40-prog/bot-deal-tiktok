@@ -7,12 +7,15 @@
  },
  "mau_truoc": "",
  "trang2": {
-  "da_xu_ly": [],
+  "da_xu_ly": [
+   "122107259961524682_1165385765822622",
+   "122107259961524682_1684432699875113"
+  ],
   "hom_nay": {
    "ngay": "2026-11-07",
-   "so": 0
+   "so": 1
   },
-  "mau_truoc": "",
+  "mau_truoc": "Vui quá, cảm ơn {ten} đã bình luận! Chia sẻ cho bạn bè cùng cười nhé 😄",
   "loi_lien_tiep": 0
  }
 }
