@@ -17,5 +17,32 @@
   },
   "mau_truoc": "Vui quá, cảm ơn {ten} đã bình luận! Chia sẻ cho bạn bè cùng cười nhé 😄",
   "loi_lien_tiep": 0
+ },
+ "trang3": {
+  "da_xu_ly": [],
+  "hom_nay": {
+   "ngay": "2026-11-07",
+   "so": 0
+  },
+  "mau_truoc": "",
+  "loi_lien_tiep": 0
+ },
+ "trang4": {
+  "da_xu_ly": [],
+  "hom_nay": {
+   "ngay": "2026-11-07",
+   "so": 0
+  },
+  "mau_truoc": "",
+  "loi_lien_tiep": 0
+ },
+ "trang5": {
+  "da_xu_ly": [],
+  "hom_nay": {
+   "ngay": "2026-11-07",
+   "so": 0
+  },
+  "mau_truoc": "",
+  "loi_lien_tiep": 0
  }
 }
