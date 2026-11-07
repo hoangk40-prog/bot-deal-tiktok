@@ -161,14 +161,9 @@
     "3.mp4"
    ]
   },
-  "loi_lien_tiep": 6,
+  "loi_lien_tiep": 0,
   "bat_dau": "2026-11-04",
-  "loi_file": {
-   "video": {
-    "4.mp4": 3,
-    "5.mp4": 3
-   }
-  }
+  "loi_file": {}
  },
  "trang5": {
   "da_dang": {
@@ -176,14 +171,9 @@
     "1.mp4"
    ]
   },
-  "loi_lien_tiep": 4,
+  "loi_lien_tiep": 0,
   "bat_dau": "2026-11-05",
-  "loi_file": {
-   "video": {
-    "2.mp4": 3,
-    "3.mp4": 1
-   }
-  }
+  "loi_file": {}
  },
  "trang4": {
   "da_dang": {
@@ -192,13 +182,8 @@
     "2.mp4"
    ]
   },
-  "loi_lien_tiep": 6,
+  "loi_lien_tiep": 0,
   "bat_dau": "2026-11-05",
-  "loi_file": {
-   "video": {
-    "3.mp4": 3,
-    "4.mp4": 3
-   }
-  }
+  "loi_file": {}
  }
 }
