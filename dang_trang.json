@@ -196,9 +196,13 @@
     "12.mp4"
    ]
   },
-  "loi_lien_tiep": 0,
+  "loi_lien_tiep": 1,
   "bat_dau": "2026-11-04",
-  "loi_file": {}
+  "loi_file": {
+   "video": {
+    "13.mp4": 1
+   }
+  }
  },
  "trang5": {
   "da_dang": {
