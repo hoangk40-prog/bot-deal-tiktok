@@ -236,6 +236,8 @@ def main():
         print("Qua it ma dung duoc -> khong gui.")
         return
     text, anh = soan_tin(mas, hom_nay, kieu), the_anh(mas, hom_nay, kieu)
+    if ad.loi_moi_nhom():                    # 11/11: kenh Telegram + Trang FB moi vao nhom Zalo (soan_tin dung chung cho Zalo -> gan o day)
+        text += "\n\n" + ad.loi_moi_nhom()
     print(text)
     if dry:
         if anh:

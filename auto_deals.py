@@ -769,8 +769,18 @@ def claim_ok(text, it):
     return True
 
 
-def caption(it):
-    """Chu thich 1 san pham (Telegram / Zalo / Trang FB). 23/10 theo y anh, giup NGUOI MUA: loi chao AI, 'da ban tren X',
+ZALO_LINK = ""          # 11/11 anh duyet: link moi vao nhom Zalo (config.json "zalo_link"), gan cuoi tin kenh Telegram + Trang FB
+
+
+def loi_moi_nhom():
+    """Dong moi vao nhom Zalo; chua co link thi rong. KHONG gan vao tin dang trong chinh nhom Zalo."""
+    link = (ZALO_LINK or str(load_config().get("zalo_link") or "")).strip()
+    return f"👥 Vào nhóm Zalo SĂN DEAL HỜI MỖI NGÀY để nhận deal sớm nhất: {link}" if link else ""
+
+
+def caption(it, moi=False):
+    """moi=True (kenh Telegram, Trang FB): them dong moi vao nhom Zalo o cuoi.
+    Chu thich 1 san pham (Telegram / Zalo / Trang FB). 23/10 theo y anh, giup NGUOI MUA: loi chao AI, 'da ban tren X',
     hang chinh hang (chi khi co that), diem noi bat (AI, da loc bia), GIA NIEM YET (Accesstrade chi co gia nay; trong app
     co khuyen mai nen re hon) + meo mua re nhat."""
     title = it["title"] if len(it["title"]) <= 120 else it["title"][:117].rstrip() + "..."
@@ -810,6 +820,8 @@ def caption(it):
     san = "Shopee" if it.get("san") == "shopee" else "TikTok"
     lines += [f"💡 Mẹo mua rẻ nhất: bấm “Lưu” voucher của shop + voucher {san}, chọn mã freeship rồi mới thanh toán",
               f"👉 BẤM XEM GIÁ SALE: {it['aff']}"]
+    if moi and loi_moi_nhom():
+        lines += ["", loi_moi_nhom()]
     return "\n".join(lines)
 
 
@@ -902,9 +914,9 @@ def send_telegram(bot, chat, text):
     return sent
 
 
-def send_product(bot, chat, it):
+def send_product(bot, chat, it, moi=False):
     """1 san pham = 1 tin co anh + chu thich (de chuyen tiep / dan sang Zalo). Anh loi thi gui chu."""
-    cap = caption(it)
+    cap = caption(it, moi)
     if it.get("image"):
         try:
             if len(cap) <= 1024:
@@ -1234,14 +1246,14 @@ def fb_post(page_id, page_token, it):
     """Dang 1 san pham len Trang: anh + chu thich (link bam duoc). Khong co anh thi dang bai chu kem link."""
     photo = None
     if it.get("image"):
-        url, fields = f"{FB_API}/{page_id}/photos", {"caption": caption(it)}
+        url, fields = f"{FB_API}/{page_id}/photos", {"caption": caption(it, True)}
         try:
             photo = fb_image_bytes(it["image"])
         except Exception as e:
             print("  Tai anh cho Facebook loi, de Facebook tu tai qua link:", e)
             fields["url"] = it["image"]
     else:
-        url, fields = f"{FB_API}/{page_id}/feed", {"message": caption(it), "link": it["aff"]}
+        url, fields = f"{FB_API}/{page_id}/feed", {"message": caption(it, True), "link": it["aff"]}
     fields["access_token"] = page_token
     if photo:                                          # gui file anh kem chu thich (multipart)
         b = "----dealbot" + str(int(time.time() * 1000))
@@ -1261,7 +1273,7 @@ def fb_post(page_id, page_token, it):
 
 def make_post(hook, it):
     """Gui 1 san pham sang Make.com (kich ban: Webhook -> Facebook Pages 'Create a Post with Photos')."""
-    body = json.dumps({"image": it.get("image") or "", "message": caption(it), "link": it.get("aff") or ""}).encode()
+    body = json.dumps({"image": it.get("image") or "", "message": caption(it, True), "link": it.get("aff") or ""}).encode()
     req = urllib.request.Request(hook, data=body, headers={"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=30) as r:
         r.read()
@@ -1650,7 +1662,7 @@ def main():
             continue
         if channel and channel != chat:
             try:
-                send_product(bot, channel, it)
+                send_product(bot, channel, it, moi=True)
             except Exception as e:                     # kenh loi khong lam hong tin gui cho anh
                 print("LOI dang len kenh (bot da la admin kenh chua?):", e)
         sent_any = True
