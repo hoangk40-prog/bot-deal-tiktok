@@ -216,15 +216,14 @@
     "7.mp4",
     "8.mp4",
     "9.mp4",
-    "10.mp4"
+    "10.mp4",
+    "11.mp4"
    ]
   },
-  "loi_lien_tiep": 1,
+  "loi_lien_tiep": 0,
   "bat_dau": "2026-11-05",
   "loi_file": {
-   "video": {
-    "11.mp4": 1
-   }
+   "video": {}
   }
  },
  "trang4": {
