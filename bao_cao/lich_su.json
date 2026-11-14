@@ -1276,5 +1276,65 @@
    }
   },
   "ai": "🧠 Nhận xét số liệu\n- Hệ thống bot chạy ổn định, không có lỗi và đã đăng đều 2 bài mỗi ngày lên Facebook.\n- Trang Sống Chậm Nghĩ Sâu đã đạt hơn 11.000 người theo dõi, trong khi Ngẫm Đời Mà Sống vẫn còn ít.\n- Doanh thu tháng chưa tăng thêm, anh nên đẩy mạnh chia sẻ link deal vào nhiều nhóm Zalo và Telegram hơn để kiếm thêm đơn.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Dịch vụ cho thuê bot tự động đăng bài: Nhờ kinh nghiệm vận hành bot mượt mà, anh có thể đóng gói để bán giải pháp nuôi page cho người bán hàng online. Bước đầu là quay video ngắn khoe hệ thống bot đang tự đăng bài để thu hút khách trên Facebook.\n- Bán tài khoản tool AI dựng video: Tận dụng sẵn công cụ tự dựng video AI cho YouTube, anh có thể cho người khác thuê tool theo tháng. Bước đầu là đăng bài chia sẻ vài video AI mẫu lên các hội nhóm làm video để tìm khách mua."
+ },
+ "2026-11-14": {
+  "ngay": "2026-11-14",
+  "luc": "23:12",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 1,
+   "doanh_so": 59295.0,
+   "hoa_hong": 189.0,
+   "cho_duyet": 2,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {
+    "tiktok_cps": 1
+   }
+  },
+  "con_thieu_de_rut_tien": 199811.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "video_cho": 33,
+   "video_da_dang": 31,
+   "anh_cho": 0,
+   "anh_da_dang": 0
+  },
+  "bot": {
+   "mon_gui_hom_nay": 32,
+   "luot_chay_hom_nay": 12,
+   "bai_fb_hom_nay": 2,
+   "loi_lien_tiep": 0
+  },
+  "dang_trang": {
+   "video_da_dang": 83,
+   "anh_da_dang": 18,
+   "loi_lien_tiep": 0,
+   "trang2_video_da_dang": 81,
+   "trang2_anh_da_dang": 14,
+   "trang2_loi_lien_tiep": 0
+  },
+  "trang_fb": {
+   "1": {
+    "ten": "Ngẫm Đời Mà Sống",
+    "theo_doi": 35,
+    "thich": 35
+   },
+   "2": {
+    "ten": "Sống Chậm Nghĩ Sâu",
+    "theo_doi": 11009,
+    "thich": 11009
+   }
+  },
+  "ai": "🧠 Nhận xét số liệu\n- Hàng chờ video Facebook giảm nhanh xuống 33 bài. Anh cần nạp thêm video mới ngay để bot không bị gián đoạn lịch đăng trong 2 ngày tới.\n- Doanh số Accesstrade đứng yên và Telegram chỉ dừng ở 2 người theo dõi. Anh nên gắn link deal hot vào bình luận của Fanpage 11.000 theo dõi để tận dụng lượt xem sẵn có.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Dịch vụ làm video AI cho shop online: Tận dụng tool AI sẵn có để giúp các cửa hàng nhỏ tạo video bán hàng giá rẻ. Bước đầu là làm 2 video mẫu sản phẩm đồ gia dụng rồi đăng chào dịch vụ vào các nhóm bán hàng online.\n- Đăng video triết lý sống AI lên Fanpage lớn: Tận dụng đúng chủ đề trang Sống Chậm Nghĩ Sâu sẵn có 11.000 người theo dõi để kéo lại tương tác. Bước đầu là dùng tool tạo 1 video trích dẫn hay dài 30 giây rồi đăng trực tiếp lên trang."
  }
 }
