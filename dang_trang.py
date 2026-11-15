@@ -483,6 +483,42 @@ def ai_tieu_de(path, kieu, mau, chu_de=None):
                 pass
 
 
+# ---------------------------------------------------------------- 15/11 TIEU DE CAM + CAU HOI MOI BINH LUAN (Trang 1, 2)
+# So lieu 15/11: video dung o ~200 luot xem, 0 binh luan -> Facebook khong day. (1) dong tieu de VIET SAN truoc 07/11 con
+# mo bang "Bai hoc tham thia..." (trung vi 70 luot) -> luc dang AI xem video viet lai. (2) them 1 cau hoi moi binh luan.
+CAM_MO = re.compile(r"^\s*(bài học|thấu hiểu|nỗi lòng|nỗi khổ|những |cuộc sống|đời người|góc khuất)", re.I)
+CAU_HOI_DU_PHONG = ["Bạn đã từng gặp chuyện giống vậy chưa? Kể mình nghe với 👇",
+                    "Nếu là bạn, bạn sẽ làm gì? 👇",
+                    "Bạn thấy mình trong câu chuyện này không? 👇",
+                    "Câu nào trong video làm bạn nhớ nhất? 👇",
+                    "Bạn đứng về phía ai trong chuyện này? 👇"]
+
+
+def cau_hoi(tieu_de):
+    """1 cau hoi ngan moi nguoi xem binh luan (ke chuyen minh / chon phe), dung noi dung tieu de. Loi -> cau du phong."""
+    import random
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    prompt = ("Đây là tiêu đề 1 video thông điệp cuộc sống trên Trang Facebook Việt Nam:\n" + tieu_de +
+              "\nViết 1 câu hỏi NGẮN (8-16 chữ) đặt dưới tiêu đề để người xem MUỐN bình luận: hỏi họ đã từng gặp chuyện tương "
+              "tự chưa, hoặc nếu là họ thì chọn cách nào, hoặc họ đứng về phía ai. Giọng gần gũi, xưng 'bạn', không dạy đời, "
+              "không xin like/share/theo dõi, không hỏi chuyện quá riêng tư (bệnh, tiền lương cụ thể). Kết thúc bằng ' 👇'. "
+              'Trả JSON {"cau_hoi": "..."}')
+    body = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {
+        "temperature": 0.9, "responseMimeType": "application/json",
+        "responseSchema": {"type": "OBJECT", "properties": {"cau_hoi": {"type": "STRING"}}, "required": ["cau_hoi"]}}}
+    if key:
+        for model in GEMINI_MODELS:
+            try:
+                r = requests.post(f"{GEMINI}/v1beta/models/{model}:generateContent?key={key}", json=body, timeout=60)
+                r.raise_for_status()
+                q = " ".join(json.loads(r.json()["candidates"][0]["content"]["parts"][0]["text"])["cau_hoi"].split())
+                if CO_DAU.search(q) and 15 <= len(q) <= 120 and "?" in q:
+                    return q if "👇" in q else q + " 👇"
+            except Exception as e:
+                print(f"  [AI cau hoi] {model} loi: {str(e)[:100].replace(key, '***')}")
+    return random.choice(CAU_HOI_DU_PHONG)
+
+
 def tu_dat_so(drive, kieu, cho, xong, tdf, txt, done_all, dry, toi_da=3, chu_de=None):
     """File trong thu muc cho chua dang duoc vi ten khong co so / trung so file da dang / chua co dong tieu de
     -> AI viet tieu de, ghi them dong `so | tieu de` vao tieu_de*.txt, doi ten file sang so do. Tra (so file da lo, ten file bo qua)."""
@@ -680,6 +716,24 @@ def dang(kieu):
         with tempfile.TemporaryDirectory() as tmp:
             path = os.path.join(tmp, f["name"])
             drive.download(f["id"], path)
+            if not t3 and cach != "anh":            # 15/11: tieu de viet san kieu "Bai hoc tham thia..." -> AI xem video viet lai
+                head, _, tail = caption.partition("\n\n")
+                if CAM_MO.match(head):
+                    try:
+                        mau = [ln for ln in txt.splitlines() if re.match(r"\s*\d{1,3}\s*\|", ln)][-6:]
+                        moi = ai_tieu_de(path, "video", mau)
+                    except Exception as e:
+                        moi = None
+                        print("  Viet lai tieu de loi:", str(e)[:150])
+                    if moi and not CAM_MO.match(moi):
+                        print(f"Tieu de cu bi cam mo dau -> viet lai: {moi}")
+                        tieu_de[so] = moi
+                        caption = f"{moi}\n\n{tail}"
+                head, _, tail = caption.partition("\n\n")     # 15/11: cau hoi moi binh luan ngay duoi tieu de
+                q = cau_hoi(head)
+                print("Cau hoi moi binh luan:", q)
+                caption = f"{head}\n\n{q}\n\n{tail}"
+                print("Chu thich moi:", caption.replace("\n", " / "))
             post = {"anh": fb_photo, "reels": fb_reel, "video": fb_video}[cach]
             oid = post(page, token, path, caption, published=not an)
         print("Da dang, id:", oid)
