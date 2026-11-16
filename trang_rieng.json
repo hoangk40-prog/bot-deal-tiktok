@@ -1,5 +1,5 @@
 {
- "_ghi_chu": "04/11: cau hinh cac Trang kho rieng (Trang 3 tro di). THEM TRANG MOI: them 1 muc so moi (copy muc 4, doi ten/goc/phut/hang/chu de), them 8 cron phut 'phut' vao .github/workflows/dang_trang.yml, tao thu muc 'Trang Facebook/Trang N' tren Drive, them kenh Xuong Video. Ma Trang: nhap_facebook_nhieu_trang.bat + nap_ma_github.bat (doc file nay). Phut cron: 0 = Trang 1, 30 = Trang 2 (khong dung lai).",
+ "_ghi_chu": "04/11: cau hinh cac Trang kho rieng (Trang 3 tro di). THEM TRANG MOI: them 1 muc so moi (copy muc 4, doi ten/goc/phut/hang/chu de), them 8 cron phut 'phut' vao .github/workflows/dang_trang.yml, tao thu muc 'Trang Facebook/Trang N' tren Drive, them kenh Xuong Video. Ma Trang: nhap_facebook_nhieu_trang.bat + nap_ma_github.bat (doc file nay). Phut cron: 0 = Trang 1, 30 = Trang 2 (khong dung lai). 16/11 anh: Trang 3,4,5 moi ngay 3 video (quota co dinh 3, gio = 3 muc hang dau).",
  "3": {
   "ten": "Bếp Nhà Mẹo Hay",
   "goc": "Trang 3",
@@ -7,7 +7,7 @@
   "footer": "👉 Theo dõi Trang để mỗi ngày biết thêm một món đồ hay, một mẹo nhà cửa.",
   "chu_de": ["video đồ dùng nhà bếp thông minh / mẹo bếp, mẹo nấu nướng", "Trang Facebook đồ bếp, mẹo bếp Việt Nam (Bếp Nhà Mẹo Hay)", "#dogiadung #meobep"],
   "hang": {"11": 1, "20": 2, "15": 3, "18": 4, "9": 5, "13": 6, "22": 7, "7": 8},
-  "quota": [[7, 3], [14, 5], [1000000, 8]]
+  "quota": [[1000000, 3]]
  },
  "4": {
   "ten": "Đồ Gia dung và các mẹo hay",
@@ -16,7 +16,7 @@
   "footer": "👉 Theo dõi Trang để nhà luôn gọn gàng, sạch sẽ với những món đồ và mẹo hay mỗi ngày.",
   "chu_de": ["video đồ dùng sắp xếp, dọn dẹp, vệ sinh nhà cửa / mẹo vặt giặt giũ, gọn nhà", "Trang Facebook đồ gia dụng, mẹo dọn dẹp sắp xếp nhà cửa Việt Nam", "#nhagongang #meovat"],
   "hang": {"12": 1, "21": 2, "16": 3, "19": 4, "10": 5, "14": 6, "8": 7, "23": 8},
-  "quota": [[7, 3], [14, 5], [1000000, 8]]
+  "quota": [[1000000, 3]]
  },
  "5": {
   "ten": "Sức khỏe Là Tất cả",
@@ -25,6 +25,6 @@
   "footer": "👉 Theo dõi Trang để mỗi ngày thêm một động tác, một món đồ giúp cơ thể nhẹ nhõm hơn. Có bệnh nền nên hỏi ý kiến bác sĩ trước khi tập.",
   "chu_de": ["video động tác giãn cơ, bài tập nhẹ tại nhà / dụng cụ chăm sóc sức khoẻ (máy massage, gối cổ...), không nói chữa bệnh, không nói thuốc", "Trang Facebook sức khoẻ đời thường Việt Nam (Sức khỏe Là Tất cả)", "#suckhoe #gianco"],
   "hang": {"11": 1, "20": 2, "6": 3, "17": 4, "9": 5, "14": 6, "22": 7, "7": 8},
-  "quota": [[7, 3], [14, 5], [1000000, 8]]
+  "quota": [[1000000, 3]]
  }
 }
