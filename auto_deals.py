@@ -134,7 +134,7 @@ def http_json(req, tries=3):
 
 def api_get(token, url):
     return http_json(urllib.request.Request(url, headers={"Authorization": f"Token {token}",
-                                                          "User-Agent": "deal-bot/2.0"}))
+                                                          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Safari/537.36"}))
 
 
 def fetch_offers(token, merchant, limit=50, pages=4):
@@ -421,7 +421,7 @@ def tt_get(token, params, tries=4):
     """Goi API TikTok cua Accesstrade. API gioi han rat it luot/phut -> gap 429 thi cho lau."""
     url = f"{TIKTOK_API}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"Authorization": f"Token {token}", "Accept": "application/json",
-                                               "User-Agent": "deal-bot/3.0"})
+                                               "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Safari/537.36"})
     for i in range(tries):
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
@@ -640,7 +640,7 @@ def make_link(token, product_url, product_id="", full=False, utm="zalo"):
     url = f"{TIKTOK_API}/create_link" + ("" if full else "?minify=true")
     req = urllib.request.Request(url, data=json.dumps(body).encode(), method="POST",
                                  headers={"Authorization": f"Token {token}", "Content-Type": "application/json",
-                                          "Accept": "application/json", "User-Agent": "deal-bot/3.0"})
+                                          "Accept": "application/json", "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0 Safari/537.36"})
     for i in range(3):
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
