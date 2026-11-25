@@ -1516,5 +1516,65 @@
    }
   },
   "ai": "🧠 Nhận xét số liệu\n- Trang Sống Chậm Nghĩ Sâu tăng nhẹ lên 11.016 người theo dõi, trong khi kênh Telegram vẫn chững lại ở 2 người.\n- Hàng chờ video giảm còn 22 clip, anh cần bổ sung thêm nguyên liệu để bot không bị đứt quãng việc đăng bài.\n- Doanh thu Accesstrade tháng giữ nguyên 59.295 đồng, anh nên kiểm tra lại kênh Telegram và nhóm Zalo xem link deal đã hiển thị tốt chưa.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Dịch vụ thiết lập bot tự động săn deal cho các quản trị viên nhóm Zalo, rất hợp vì anh đang vận hành bot mượt mà một mình. Bước đầu là quay video ngắn khoe cảnh bot tự động gửi deal rồi đăng vào các hội nhóm làm kiếm tiền online.\n- Bán gói sử dụng tool tự động tạo video AI hàng tháng, tận dụng ngay công cụ dựng video YouTube sẵn có của anh. Bước đầu là đăng các đoạn video mẫu đẹp mắt lên hội nhóm sáng tạo nội dung để tìm khách hàng thuê tool."
+ },
+ "2026-11-26": {
+  "ngay": "2026-11-26",
+  "luc": "06:44",
+  "loi": [],
+  "accesstrade_hom_nay": {
+   "don": 0,
+   "doanh_so": 0.0,
+   "hoa_hong": 0.0,
+   "cho_duyet": 0,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {}
+  },
+  "accesstrade_thang": {
+   "don": 1,
+   "doanh_so": 59295.0,
+   "hoa_hong": 189.0,
+   "cho_duyet": 2,
+   "da_duyet": 0,
+   "huy": 0,
+   "san": {
+    "tiktok_cps": 1
+   }
+  },
+  "con_thieu_de_rut_tien": 199811.0,
+  "telegram_nguoi_theo_doi": 2,
+  "facebook_hang_cho": {
+   "video_cho": 18,
+   "video_da_dang": 0,
+   "anh_cho": 0,
+   "anh_da_dang": 0
+  },
+  "bot": {
+   "mon_gui_hom_nay": 0,
+   "luot_chay_hom_nay": 0,
+   "bai_fb_hom_nay": 0,
+   "loi_lien_tiep": 0
+  },
+  "dang_trang": {
+   "video_da_dang": 96,
+   "anh_da_dang": 18,
+   "loi_lien_tiep": 0,
+   "trang2_video_da_dang": 95,
+   "trang2_anh_da_dang": 14,
+   "trang2_loi_lien_tiep": 0
+  },
+  "trang_fb": {
+   "1": {
+    "ten": "Ngẫm Đời Mà Sống",
+    "theo_doi": 41,
+    "thich": 41
+   },
+   "2": {
+    "ten": "Sống Chậm Nghĩ Sâu",
+    "theo_doi": 11017,
+    "thich": 11017
+   }
+  },
+  "ai": "🧠 Nhận xét số liệu\n- Doanh thu Accesstrade tháng đứng yên ở mức 59.295 đồng và hôm nay không có đơn mới, anh nên kiểm tra lại lượng tương tác trên các kênh phân phối deal để thu hút người mua.\n- Hàng chờ video trên Facebook giảm mạnh xuống còn 18 video và hôm nay bot chưa chạy bài nào, anh cần nạp thêm nội dung vào kho lưu trữ để hệ thống duy trì đăng đều đặn.\n\n💡 Cách kiếm tiền / xu hướng mới\n- Dịch vụ cài đặt bot săn deal tự động cho chủ nhóm Zalo: Rất hợp vì anh đang vận hành bot mượt mà một mình, bước đầu hãy quay clip ngắn khoe bot tự chạy rồi đăng vào các nhóm kiếm tiền online.\n- Cho thuê tool AI dựng video: Tận dụng ngay công cụ tự tạo video YouTube sẵn có để kiếm thêm, bước đầu hãy đăng vài video mẫu đẹp mắt lên hội nhóm sáng tạo nội dung để tìm khách."
  }
 }
